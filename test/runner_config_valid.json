@@ -1,0 +1,12 @@
+{
+  "AgentId": 42,
+  "AgentName": "runner-prod-01",
+  "PoolId": 1,
+  "PoolName": "Default",
+  "ServerUrl": "https://pipelines.actions.githubusercontent.com/abc123/",
+  "GitHubUrl": "https://github.com/myorg",
+  "WorkFolder": "_work",
+  "MonitorSocketAddress": null,
+  "IsEphemeral": false,
+  "DisableUpdate": false
+}

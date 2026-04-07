@@ -1,0 +1,36 @@
+[2024-03-15 08:15:01Z INFO HostContext] Well known directory 'Bin': '/actions-runner/bin.2.333.1'
+[2024-03-15 08:15:01Z INFO Worker] Version: 2.333.1
+[2024-03-15 08:15:01Z INFO Worker] Commit: 6792966801e8925346735b68c03bf9f347af4646
+[2024-03-15 08:15:01Z INFO Worker] Waiting to receive the job message from the channel.
+[2024-03-15 08:15:01Z INFO Worker] Message received.
+[2024-03-15 08:15:01Z INFO Worker] Job message:
+ {
+  "jobDisplayName": "test",
+  "jobId": "a1b2c3d4-0000-0000-0000-000000000002",
+  "contextData": {
+    "github": {
+      "t": 2,
+      "d": [
+        {
+          "k": "repository",
+          "v": "myorg/myapp"
+        },
+        {
+          "k": "run_id",
+          "v": "8675310"
+        },
+        {
+          "k": "actor",
+          "v": "jnovack"
+        },
+        {
+          "k": "workflow",
+          "v": "CI"
+        }
+      ]
+    }
+  }
+}
+[2024-03-15 08:15:02Z INFO Worker] Operating System: Ubuntu 22.04.3 LTS
+[2024-03-15 08:18:29Z ERROR Worker] ##[error]Process completed with exit code 1.
+[2024-03-15 08:18:29Z INFO Worker] Job failed

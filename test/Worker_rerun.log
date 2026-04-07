@@ -1,0 +1,39 @@
+[2024-03-15 10:05:00Z INFO HostContext] Well known directory 'Bin': '/actions-runner/bin.2.333.1'
+[2024-03-15 10:05:00Z INFO Worker] Version: 2.333.1
+[2024-03-15 10:05:00Z INFO Worker] Commit: 6792966801e8925346735b68c03bf9f347af4646
+[2024-03-15 10:05:00Z INFO Worker] Waiting to receive the job message from the channel.
+[2024-03-15 10:05:00Z INFO Worker] Message received.
+[2024-03-15 10:05:00Z INFO Worker] Job message:
+ {
+  "jobDisplayName": "build-docker-image",
+  "jobId": "a1b2c3d4-0000-0000-0000-000000000004",
+  "contextData": {
+    "github": {
+      "t": 2,
+      "d": [
+        {
+          "k": "repository",
+          "v": "myorg/myapp"
+        },
+        {
+          "k": "run_id",
+          "v": "8675312"
+        },
+        {
+          "k": "run_attempt",
+          "v": "2"
+        },
+        {
+          "k": "actor",
+          "v": "jnovack"
+        },
+        {
+          "k": "workflow",
+          "v": "CI"
+        }
+      ]
+    }
+  }
+}
+[2024-03-15 10:05:02Z INFO Worker] Operating System: Ubuntu 22.04.3 LTS
+[2024-03-15 10:06:30Z INFO Worker] Job succeeded

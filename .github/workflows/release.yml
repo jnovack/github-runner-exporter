@@ -1,0 +1,81 @@
+name: Release Binaries
+# Builds cross-compiled binaries for linux/amd64, linux/arm64, and windows/amd64
+# and attaches them to the GitHub release created by the semver tag.
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+
+jobs:
+  validate_tag:
+    name: Validate release tag
+    runs-on: ubuntu-latest
+    outputs:
+      is_valid: ${{ steps.check.outputs.is_valid }}
+    steps:
+      - id: check
+        name: Validate full semver tag
+        run: |
+          if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
+            echo "is_valid=true" >> "${GITHUB_OUTPUT}"
+          elif [[ "${GITHUB_REF_NAME}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-((alpha|beta|pre|rc)([.-][0-9A-Za-z]+)*))?$ ]]; then
+            echo "is_valid=true" >> "${GITHUB_OUTPUT}"
+          else
+            echo "is_valid=false" >> "${GITHUB_OUTPUT}"
+            echo "Tag ${GITHUB_REF_NAME} is not a full semver tag like v1.3.0"
+          fi
+
+  build:
+    name: Build ${{ matrix.goos }}/${{ matrix.goarch }}
+    runs-on: ubuntu-latest
+    needs: validate_tag
+    if: needs.validate_tag.outputs.is_valid == 'true'
+    permissions:
+      contents: write
+    strategy:
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+            artifact: github-runner-exporter-linux-amd64
+          - goos: linux
+            goarch: arm64
+            artifact: github-runner-exporter-linux-arm64
+          - goos: windows
+            goarch: amd64
+            artifact: github-runner-exporter-windows-amd64.exe
+
+    steps:
+      - name: Set release date
+        run: echo "RELEASE_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> "${GITHUB_ENV}"
+
+      - name: Check out the repo
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build binary
+        env:
+          CGO_ENABLED: "0"
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          go build \
+            -ldflags "-s -w \
+              -X main.version=${{ github.ref_name }} \
+              -X main.commit=${{ github.sha }} \
+              -X main.date=${{ env.RELEASE_DATE }}" \
+            -o ${{ matrix.artifact }} \
+            ./cmd/github-runner-exporter/main.go
+
+      - name: Upload binary to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ matrix.artifact }}
+          generate_release_notes: true

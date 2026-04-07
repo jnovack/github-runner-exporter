@@ -1,0 +1,6 @@
+[2024-03-15 10:00:00Z INFO HostContext] Well known directory 'Bin': '/actions-runner/bin.2.333.1'
+[2024-03-15 10:00:00Z INFO BrokerMessageListener] Session created.
+[2024-03-15 10:00:01Z INFO Terminal] WRITE LINE: 2024-03-15 10:00:01Z: Listening for Jobs
+[2024-03-15 10:05:00Z INFO Terminal] WRITE LINE: 2024-03-15 10:05:00Z: Running job: lint
+[2024-03-15 10:05:45Z INFO Terminal] WRITE LINE: 2024-03-15 10:05:45Z: Job lint completed with result: Succeeded
+[2024-03-15 10:05:46Z INFO Terminal] WRITE LINE: 2024-03-15 10:05:46Z: Listening for Jobs

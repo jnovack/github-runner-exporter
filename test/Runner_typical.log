@@ -1,0 +1,12 @@
+[2024-03-15 08:00:01Z INFO HostContext] Well known directory 'Bin': '/actions-runner/bin.2.333.1'
+[2024-03-15 08:00:01Z INFO BrokerMessageListener] Session created.
+[2024-03-15 08:00:02Z INFO Terminal] WRITE LINE: 2024-03-15 08:00:02Z: Listening for Jobs
+[2024-03-15 08:05:10Z INFO Terminal] WRITE LINE: 2024-03-15 08:05:10Z: Running job: build
+[2024-03-15 08:07:45Z INFO Terminal] WRITE LINE: 2024-03-15 08:07:45Z: Job build completed with result: Succeeded
+[2024-03-15 08:07:46Z INFO Terminal] WRITE LINE: 2024-03-15 08:07:46Z: Listening for Jobs
+[2024-03-15 08:15:00Z INFO Terminal] WRITE LINE: 2024-03-15 08:15:00Z: Running job: test
+[2024-03-15 08:18:30Z INFO Terminal] WRITE LINE: 2024-03-15 08:18:30Z: Job test completed with result: Failed
+[2024-03-15 08:18:31Z INFO Terminal] WRITE LINE: 2024-03-15 08:18:31Z: Listening for Jobs
+[2024-03-15 09:00:00Z INFO Terminal] WRITE LINE: 2024-03-15 09:00:00Z: Running job: deploy
+[2024-03-15 09:03:12Z INFO Terminal] WRITE LINE: 2024-03-15 09:03:12Z: Job deploy completed with result: Cancelled
+[2024-03-15 09:03:13Z INFO Terminal] WRITE LINE: 2024-03-15 09:03:13Z: Listening for Jobs
