@@ -20,17 +20,19 @@ import (
 //
 // It sends parsed Events and WorkerMeta values to the provided Tracker.
 type Watcher struct {
-	diagDir string
-	tracker *Tracker
-	poll    time.Duration // fallback poll interval when fsnotify misses events
+	diagDir       string
+	tracker       *Tracker
+	poll          time.Duration // fallback poll interval when fsnotify misses events
+	harvestedLogs map[string]bool // Worker log paths where full metadata was obtained
 }
 
 // NewWatcher creates a Watcher for the given _diag directory.
 func NewWatcher(diagDir string, tracker *Tracker) *Watcher {
 	return &Watcher{
-		diagDir: diagDir,
-		tracker: tracker,
-		poll:    5 * time.Second,
+		diagDir:       diagDir,
+		tracker:       tracker,
+		poll:          5 * time.Second,
+		harvestedLogs: make(map[string]bool),
 	}
 }
 
@@ -112,9 +114,12 @@ func (w *Watcher) handleFSEvent(event fsnotify.Event, runnerLog *string, runnerO
 			*runnerOffset = w.tailRunnerLog(*runnerLog, *runnerOffset)
 
 		case isWorkerLog(name):
-			if event.Has(fsnotify.Create) {
-				w.readWorkerLog(event.Name)
-			}
+			// Read on both Create and Write: the metadata fields (actor, workflow,
+			// repository) appear ~600 lines into the Worker log, inside the job
+			// message JSON. The Create event fires before those lines are written,
+			// so we must re-read on subsequent Write events until we have full
+			// metadata. harvestedLogs tracks files where we already got everything.
+			w.readWorkerLog(event.Name)
 		}
 	}
 }
@@ -156,7 +161,12 @@ func (w *Watcher) tailRunnerLog(path string, offset int64) int64 {
 }
 
 // readWorkerLog reads an entire Worker log file and sends metadata to the tracker.
+// Once all five metadata fields are obtained from a file, it is marked in
+// harvestedLogs and subsequent Write events for that file are skipped.
 func (w *Watcher) readWorkerLog(path string) {
+	if w.harvestedLogs[path] {
+		return
+	}
 	slog.Debug("reading worker log", "path", path)
 	data, err := os.ReadFile(path) // #nosec G304 — path comes from fsnotify in trusted dir
 	if err != nil {
@@ -166,6 +176,9 @@ func (w *Watcher) readWorkerLog(path string) {
 	meta := ParseWorkerLog(string(data))
 	if meta.Repo != "" || meta.JobName != "" {
 		w.tracker.SetWorkerMeta(meta)
+		if meta.Repo != "" && meta.Workflow != "" && meta.RunID != "" && meta.Actor != "" && meta.JobName != "" {
+			w.harvestedLogs[path] = true
+		}
 	}
 }
 

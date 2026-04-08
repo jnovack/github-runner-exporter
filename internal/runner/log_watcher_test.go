@@ -421,6 +421,81 @@ func TestHandleFSEvent_NewWorkerLog(t *testing.T) {
 	}
 }
 
+// TestHandleFSEvent_WorkerLog_WriteEvent verifies that Write events for Worker
+// logs are also processed, covering the case where the file is created before
+// the metadata lines have been written.
+func TestHandleFSEvent_WorkerLog_WriteEvent(t *testing.T) {
+	dir := t.TempDir()
+	tracker := newTestTrackerFor(t, "runner")
+	w := NewWatcher(dir, tracker)
+
+	content, err := os.ReadFile(filepath.Join("..", "..", "test", "Worker_succeeded.log"))
+	if err != nil {
+		t.Fatalf("read fixture: %v", err)
+	}
+	workerPath := filepath.Join(dir, "Worker_20240315-080510-utc.log")
+
+	// Simulate a Create event with only the first line written (no metadata yet).
+	if err := os.WriteFile(workerPath, content[:50], 0600); err != nil {
+		t.Fatal(err)
+	}
+	runnerLog := ""
+	var offset int64
+	w.handleFSEvent(fsnotify.Event{Name: workerPath, Op: fsnotify.Create}, &runnerLog, &offset)
+
+	// No metadata yet — current job should have no repo.
+	tracker.HandleEvent(Event{Kind: EventJobStarted, JobName: "build"})
+	snap := tracker.Snapshot()
+	if snap.Current != nil && snap.Current.Repo != "" {
+		t.Error("expected no repo metadata from partial Worker log on Create")
+	}
+
+	// Simulate a Write event after the full content has been flushed.
+	if err := os.WriteFile(workerPath, content, 0600); err != nil {
+		t.Fatal(err)
+	}
+	w.handleFSEvent(fsnotify.Event{Name: workerPath, Op: fsnotify.Write}, &runnerLog, &offset)
+
+	snap = tracker.Snapshot()
+	if snap.Current == nil || snap.Current.Repo != "myorg/myapp" {
+		t.Error("expected repo metadata to be applied after Write event with full content")
+	}
+}
+
+// TestHandleFSEvent_WorkerLog_HarvestedSkipsReread verifies that once a Worker
+// log has been fully harvested, subsequent Write events are skipped.
+func TestHandleFSEvent_WorkerLog_HarvestedSkipsReread(t *testing.T) {
+	dir := t.TempDir()
+	tracker := newTestTrackerFor(t, "runner")
+	w := NewWatcher(dir, tracker)
+
+	content, err := os.ReadFile(filepath.Join("..", "..", "test", "Worker_succeeded.log"))
+	if err != nil {
+		t.Fatalf("read fixture: %v", err)
+	}
+	workerPath := filepath.Join(dir, "Worker_20240315-080510-utc.log")
+	if err := os.WriteFile(workerPath, content, 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	runnerLog := ""
+	var offset int64
+
+	// First Create event — should harvest the file and mark it as done.
+	w.handleFSEvent(fsnotify.Event{Name: workerPath, Op: fsnotify.Create}, &runnerLog, &offset)
+	if !w.harvestedLogs[workerPath] {
+		t.Fatal("expected workerPath to be marked as harvested after full metadata read")
+	}
+
+	// Remove the file to prove subsequent Write events do NOT re-read it.
+	if err := os.Remove(workerPath); err != nil {
+		t.Fatal(err)
+	}
+	// This would panic or error if readWorkerLog tried to open the deleted file.
+	w.handleFSEvent(fsnotify.Event{Name: workerPath, Op: fsnotify.Write}, &runnerLog, &offset)
+	// If we reach here without error, the harvested guard worked.
+}
+
 // TestWatcher_WindowsPaths verifies path construction uses filepath.Join (cross-platform).
 func TestWatcher_WindowsPaths(t *testing.T) {
 	// Construct a dir path the same way the watcher would on any OS.
