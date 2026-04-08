@@ -40,14 +40,15 @@
       {
         "current": {},
         "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-        "definition": "label_values(github_runner_jobs_total, instance)",
+        "definition": "label_values(github_runner_info, instance)",
         "hide": 0,
         "includeAll": true,
         "multi": false,
         "name": "runner",
         "options": [],
+        "regex": "",
         "query": {
-          "query": "label_values(github_runner_jobs_total, instance)",
+          "query": "label_values(github_runner_info, instance)",
           "refId": "StandardVariableQuery"
         },
         "refresh": 2,
@@ -136,11 +137,11 @@
       },
       "gridPos": { "h": 4, "w": 4, "x": 0, "y": 1 },
       "id": 2,
-      "options": { "colorMode": "background", "graphMode": "area", "reduceOptions": { "calcs": ["sum"] } },
+      "options": { "colorMode": "background", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] } },
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "expr": "sum(increase(github_runner_jobs_total{instance=~\"$runner\", repo=~\"$repo\", workflow=~\"$workflow\"}[$__range]))",
+          "expr": "sum(github_runner_jobs_total{instance=~\"$runner\", repo=~\"$repo\", workflow=~\"$workflow\"})",
           "legendFormat": "Total Jobs"
         }
       ],
@@ -171,11 +172,11 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "expr": "sum(rate(github_runner_jobs_total{instance=~\"$runner\", repo=~\"$repo\", workflow=~\"$workflow\", status=\"succeeded\"}[1h])) / sum(rate(github_runner_jobs_total{instance=~\"$runner\", repo=~\"$repo\", workflow=~\"$workflow\"}[1h]))",
+          "expr": "sum(github_runner_jobs_total{instance=~\"$runner\", repo=~\"$repo\", workflow=~\"$workflow\", status=\"succeeded\"}) / sum(github_runner_jobs_total{instance=~\"$runner\", repo=~\"$repo\", workflow=~\"$workflow\"})",
           "legendFormat": "Success Rate"
         }
       ],
-      "title": "Success Rate (1h)",
+      "title": "Success Rate (lifetime)",
       "type": "stat"
     },
     {
@@ -189,11 +190,11 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "expr": "histogram_quantile(0.50, sum by(le)(rate(github_runner_job_duration_seconds_bucket{instance=~\"$runner\", repo=~\"$repo\", workflow=~\"$workflow\"}[1h])))",
+          "expr": "histogram_quantile(0.50, sum by(le)(github_runner_job_duration_seconds_bucket{instance=~\"$runner\", repo=~\"$repo\", workflow=~\"$workflow\"}))",
           "legendFormat": "p50"
         }
       ],
-      "title": "Median Duration (p50, 1h)",
+      "title": "Median Duration (p50, lifetime)",
       "type": "stat"
     },
     {
@@ -207,11 +208,11 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "expr": "histogram_quantile(0.95, sum by(le)(rate(github_runner_job_duration_seconds_bucket{instance=~\"$runner\", repo=~\"$repo\", workflow=~\"$workflow\"}[1h])))",
+          "expr": "histogram_quantile(0.95, sum by(le)(github_runner_job_duration_seconds_bucket{instance=~\"$runner\", repo=~\"$repo\", workflow=~\"$workflow\"}))",
           "legendFormat": "p95"
         }
       ],
-      "title": "p95 Duration (1h)",
+      "title": "p95 Duration (lifetime)",
       "type": "stat"
     },
     {
@@ -224,7 +225,7 @@
     {
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "fieldConfig": {
-        "defaults": { "unit": "short", "custom": { "stacking": { "mode": "normal" } } },
+        "defaults": { "unit": "short", "custom": { "fillOpacity": 10, "stacking": { "mode": "none" }, "spanNulls": true } },
         "overrides": [
           { "matcher": { "id": "byName", "options": "succeeded" }, "properties": [{ "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } }] },
           { "matcher": { "id": "byName", "options": "failed" }, "properties": [{ "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } }] },
@@ -236,12 +237,21 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "expr": "sum by(status)(rate(github_runner_jobs_total{instance=~\"$runner\", repo=~\"$repo\", workflow=~\"$workflow\"}[5m]))",
+          "expr": "sum by(status)(increase(github_runner_jobs_total{instance=~\"$runner\", repo=~\"$repo\", workflow=~\"$workflow\"}[$__interval]))",
           "legendFormat": "{{status}}"
         }
       ],
-      "title": "Job Rate by Status",
-      "type": "timeseries"
+      "title": "Jobs Completed by Status (cumulative)",
+      "type": "timeseries",
+      "transformations": [
+        {
+          "id": "calculateField",
+          "options": {
+            "mode": "cumulativeFunctions",
+            "reduce": { "reducer": "sum" }
+          }
+        }
+      ]
     },
     {
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
@@ -265,11 +275,11 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "expr": "sum by(instance)(rate(github_runner_jobs_total{instance=~\"$runner\", repo=~\"$repo\", workflow=~\"$workflow\", status=\"succeeded\"}[30m])) / sum by(instance)(rate(github_runner_jobs_total{instance=~\"$runner\", repo=~\"$repo\", workflow=~\"$workflow\"}[30m]))",
+          "expr": "sum by(instance)(rate(github_runner_jobs_total{instance=~\"$runner\", repo=~\"$repo\", workflow=~\"$workflow\", status=\"succeeded\"}[$__rate_interval])) / sum by(instance)(rate(github_runner_jobs_total{instance=~\"$runner\", repo=~\"$repo\", workflow=~\"$workflow\"}[$__rate_interval]))",
           "legendFormat": "{{instance}}"
         }
       ],
-      "title": "Success Rate Over Time (30m window)",
+      "title": "Success Rate Over Time",
       "type": "timeseries"
     },
     {
@@ -288,12 +298,12 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "expr": "topk(10, sum by(repo)(increase(github_runner_jobs_total{instance=~\"$runner\"}[24h])))",
+          "expr": "topk(10, sum by(repo)(github_runner_jobs_total{instance=~\"$runner\"}))",
           "legendFormat": "{{repo}}",
           "instant": true
         }
       ],
-      "title": "Top Repos by Job Count (24h)",
+      "title": "Top Repos by Job Count",
       "type": "barchart"
     },
     {
@@ -304,12 +314,12 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "expr": "topk(10, sum by(workflow)(increase(github_runner_jobs_total{instance=~\"$runner\", repo=~\"$repo\"}[24h])))",
+          "expr": "topk(10, sum by(workflow)(github_runner_jobs_total{instance=~\"$runner\", repo=~\"$repo\"}))",
           "legendFormat": "{{workflow}}",
           "instant": true
         }
       ],
-      "title": "Top Workflows by Job Count (24h)",
+      "title": "Top Workflows by Job Count",
       "type": "barchart"
     },
     {
@@ -320,12 +330,12 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "expr": "topk(10, sum by(repo)(increase(github_runner_jobs_total{instance=~\"$runner\", status=\"failed\"}[24h])))",
+          "expr": "topk(10, sum by(repo)(github_runner_jobs_total{instance=~\"$runner\", status=\"failed\"}))",
           "legendFormat": "{{repo}}",
           "instant": true
         }
       ],
-      "title": "Top Repos by Failure Count (24h)",
+      "title": "Top Repos by Failure Count",
       "type": "barchart"
     },
     {
@@ -343,21 +353,21 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "expr": "histogram_quantile(0.50, sum by(le, workflow)(rate(github_runner_job_duration_seconds_bucket{instance=~\"$runner\", repo=~\"$repo\", workflow=~\"$workflow\"}[1h])))",
+          "expr": "histogram_quantile(0.50, sum by(le, workflow)(github_runner_job_duration_seconds_bucket{instance=~\"$runner\", repo=~\"$repo\", workflow=~\"$workflow\"}))",
           "legendFormat": "p50 {{workflow}}"
         },
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "expr": "histogram_quantile(0.95, sum by(le, workflow)(rate(github_runner_job_duration_seconds_bucket{instance=~\"$runner\", repo=~\"$repo\", workflow=~\"$workflow\"}[1h])))",
+          "expr": "histogram_quantile(0.95, sum by(le, workflow)(github_runner_job_duration_seconds_bucket{instance=~\"$runner\", repo=~\"$repo\", workflow=~\"$workflow\"}))",
           "legendFormat": "p95 {{workflow}}"
         },
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "expr": "histogram_quantile(0.99, sum by(le, workflow)(rate(github_runner_job_duration_seconds_bucket{instance=~\"$runner\", repo=~\"$repo\", workflow=~\"$workflow\"}[1h])))",
+          "expr": "histogram_quantile(0.99, sum by(le, workflow)(github_runner_job_duration_seconds_bucket{instance=~\"$runner\", repo=~\"$repo\", workflow=~\"$workflow\"}))",
           "legendFormat": "p99 {{workflow}}"
         }
       ],
-      "title": "p50 / p95 / p99 Duration by Workflow",
+      "title": "p50 / p95 / p99 Duration by Workflow (lifetime)",
       "type": "timeseries"
     },
     {
@@ -372,7 +382,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "expr": "sum by(le)(rate(github_runner_job_duration_seconds_bucket{instance=~\"$runner\", repo=~\"$repo\", workflow=~\"$workflow\"}[5m]))",
+          "expr": "sum by(le)(rate(github_runner_job_duration_seconds_bucket{instance=~\"$runner\", repo=~\"$repo\", workflow=~\"$workflow\"}[$__rate_interval]))",
           "legendFormat": "{{le}}",
           "format": "heatmap"
         }
@@ -401,11 +411,11 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "expr": "avg_over_time(github_runner_busy{instance=~\"$runner\"}[5m])",
+          "expr": "avg_over_time(github_runner_busy{instance=~\"$runner\"}[$__rate_interval])",
           "legendFormat": "{{instance}}"
         }
       ],
-      "title": "Runner Utilization % (busy time, 5m avg)",
+      "title": "Runner Utilization % (busy time)",
       "type": "timeseries"
     },
     {
@@ -422,13 +432,13 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "expr": "sort_desc(histogram_quantile(0.95, sum by(le, runner_name, workflow, job_name)(rate(github_runner_job_duration_seconds_bucket{instance=~\"$runner\", repo=~\"$repo\", workflow=~\"$workflow\"}[1h]))))",
+          "expr": "sort_desc(histogram_quantile(0.95, sum by(le, runner_name, workflow, job_name)(github_runner_job_duration_seconds_bucket{instance=~\"$runner\", repo=~\"$repo\", workflow=~\"$workflow\"})))",
           "instant": true,
           "legendFormat": "{{runner_name}} / {{workflow}} / {{job_name}}",
           "format": "table"
         }
       ],
-      "title": "Slowest Jobs — p95 Duration",
+      "title": "Slowest Jobs — p95 Duration (lifetime)",
       "type": "table",
       "transformations": [
         {
@@ -459,12 +469,12 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "expr": "topk(10, sum by(actor)(increase(github_runner_jobs_total{instance=~\"$runner\", repo=~\"$repo\", workflow=~\"$workflow\"}[24h])))",
+          "expr": "topk(10, sum by(actor)(github_runner_jobs_total{instance=~\"$runner\", repo=~\"$repo\", workflow=~\"$workflow\"}))",
           "legendFormat": "{{actor}}",
           "instant": true
         }
       ],
-      "title": "Top Actors by Job Count (24h)",
+      "title": "Top Actors by Job Count",
       "type": "barchart"
     },
     {
@@ -475,12 +485,12 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "expr": "topk(10, sum by(actor)(increase(github_runner_job_duration_seconds_sum{instance=~\"$runner\", repo=~\"$repo\", workflow=~\"$workflow\", actor=~\"$actor\"}[1h])))",
+          "expr": "topk(10, sum by(actor)(github_runner_job_duration_seconds_sum{instance=~\"$runner\", repo=~\"$repo\", workflow=~\"$workflow\", actor=~\"$actor\"}))",
           "legendFormat": "{{actor}}",
           "instant": true
         }
       ],
-      "title": "Runner-Seconds by Actor (1h)",
+      "title": "Runner-Seconds by Actor",
       "type": "barchart"
     },
     {
@@ -493,7 +503,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "expr": "sum by(actor) (github_runner_busy{instance=~\"$runner\"} == 1) * on(runner_name) group_left(actor) github_runner_current_job_info{instance=~\"$runner\", actor=~\"$actor\"}",
+          "expr": "sum by(actor) (github_runner_current_job_info{instance=~\"$runner\", actor=~\"$actor\"})",
           "legendFormat": "{{actor}}"
         }
       ],

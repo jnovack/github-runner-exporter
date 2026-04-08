@@ -78,8 +78,8 @@
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              { "color": "green", "value": null },
-              { "color": "red", "value": 0 }
+              { "color": "red", "value": null },
+              { "color": "green", "value": 1 }
             ]
           },
           "unit": "short"
@@ -192,41 +192,47 @@
       "fieldConfig": {
         "defaults": { "custom": { "align": "left" } },
         "overrides": [
-          { "matcher": { "id": "byName", "options": "online" }, "properties": [{ "id": "custom.width", "value": 80 }] },
-          { "matcher": { "id": "byName", "options": "busy" }, "properties": [{ "id": "custom.width", "value": 80 }] }
+          {
+            "matcher": { "id": "byName", "options": "online" },
+            "properties": [{ "id": "custom.width", "value": 90 }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "busy" },
+            "properties": [{ "id": "custom.width", "value": 90 }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "last run" },
+            "properties": [{ "id": "unit", "value": "dateTimeFromNow" }]
+          }
         ]
       },
       "gridPos": { "h": 8, "w": 14, "x": 0, "y": 6 },
       "id": 11,
-      "options": { "sortBy": [{ "desc": false, "displayName": "runner_name" }] },
+      "options": { "sortBy": [{ "desc": false, "displayName": "Runner" }] },
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "expr": "github_runner_info{instance=~\"$runner\"}",
+          "expr": "github_runner_online{instance=~\"$runner\"} * on(instance) group_left(runner_name, group) github_runner_info{instance=~\"$runner\"}",
           "instant": true,
+          "format": "table",
           "legendFormat": "__auto",
-          "refId": "info"
+          "refId": "A"
         },
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "expr": "github_runner_online{instance=~\"$runner\"}",
+          "expr": "github_runner_busy{instance=~\"$runner\"} * on(instance) group_left(runner_name, group) github_runner_info{instance=~\"$runner\"}",
           "instant": true,
+          "format": "table",
           "legendFormat": "__auto",
-          "refId": "online"
+          "refId": "B"
         },
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "expr": "github_runner_busy{instance=~\"$runner\"}",
+          "expr": "(github_runner_last_job_timestamp_seconds{instance=~\"$runner\"} * on(instance) group_left(runner_name, group) github_runner_info{instance=~\"$runner\"}) * 1000",
           "instant": true,
+          "format": "table",
           "legendFormat": "__auto",
-          "refId": "busy"
-        },
-        {
-          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "expr": "github_runner_last_job_timestamp_seconds{instance=~\"$runner\"}",
-          "instant": true,
-          "legendFormat": "__auto",
-          "refId": "lastjob"
+          "refId": "C"
         }
       ],
       "title": "Runner Status Table",
@@ -236,12 +242,20 @@
         {
           "id": "organize",
           "options": {
+            "excludeByName": {
+              "Time": true,
+              "instance": true,
+              "job": true,
+              "group": true,
+              "os": true,
+              "version": true,
+              "revision": true
+            },
             "renameByName": {
               "runner_name": "Runner",
-              "group": "Group",
-              "Value #online": "Online",
-              "Value #busy": "Busy",
-              "Value #lastjob": "Last Job At"
+              "Value #A": "online",
+              "Value #B": "busy",
+              "Value #C": "last run"
             }
           }
         }
@@ -249,21 +263,29 @@
     },
     {
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": {
+        "defaults": { "custom": { "align": "left" } },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Elapsed" }, "properties": [{ "id": "unit", "value": "s" }] }
+        ]
+      },
       "gridPos": { "h": 8, "w": 10, "x": 14, "y": 6 },
       "id": 12,
-      "options": { "sortBy": [{ "desc": false, "displayName": "runner_name" }] },
+      "options": { "sortBy": [{ "desc": false, "displayName": "Runner" }] },
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "expr": "github_runner_current_job_info{instance=~\"$runner\"}",
           "instant": true,
-          "legendFormat": "__auto"
+          "legendFormat": "__auto",
+          "refId": "A"
         },
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "expr": "time() - github_runner_current_job_start_timestamp_seconds{instance=~\"$runner\"}",
           "instant": true,
-          "legendFormat": "__auto"
+          "legendFormat": "__auto",
+          "refId": "B"
         }
       ],
       "title": "Currently Running Jobs",
@@ -273,13 +295,20 @@
         {
           "id": "organize",
           "options": {
+            "excludeByName": {
+              "Time": true,
+              "job": true,
+              "instance": true,
+              "status": true,
+              "Value #A": true
+            },
             "renameByName": {
               "runner_name": "Runner",
               "repo": "Repo",
               "workflow": "Workflow",
               "job_name": "Job",
               "actor": "Actor",
-              "Value #B": "Elapsed (s)"
+              "Value #B": "Elapsed"
             }
           }
         }
@@ -314,7 +343,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "expr": "1 - avg by(instance)(rate(node_cpu_seconds_total{mode=\"idle\", instance=~\"$runner\"}[5m]))",
+          "expr": "1 - avg by(instance)(rate(node_cpu_seconds_total{mode=\"idle\", instance=~\"$runner\"}[$__rate_interval]))",
           "legendFormat": "{{instance}}"
         }
       ],
@@ -354,29 +383,30 @@
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "fieldConfig": {
         "defaults": {
-          "unit": "bytes",
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1,
           "thresholds": {
             "mode": "absolute",
             "steps": [
               { "color": "green", "value": null },
-              { "color": "yellow", "value": 5368709120 },
-              { "color": "red", "value": 1073741824 }
+              { "color": "yellow", "value": 0.7 },
+              { "color": "red", "value": 0.9 }
             ]
           }
         }
       },
       "gridPos": { "h": 6, "w": 8, "x": 16, "y": 15 },
       "id": 23,
-      "options": { "colorMode": "background", "graphMode": "none", "reduceOptions": { "calcs": ["lastNotNull"] } },
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "expr": "node_filesystem_avail_bytes{instance=~\"$runner\", mountpoint=\"/\", fstype!=\"tmpfs\"}",
+          "expr": "1 - (node_filesystem_avail_bytes{instance=~\"$runner\", mountpoint=\"/\"} / node_filesystem_size_bytes{instance=~\"$runner\",  mountpoint=\"/\"})",
           "legendFormat": "{{instance}}"
         }
       ],
-      "title": "Disk Free (/)",
-      "type": "stat"
+      "title": "Disk Free % on /",
+      "type": "timeseries"
     }
   ]
 }
