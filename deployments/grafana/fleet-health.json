@@ -206,7 +206,7 @@
           }
         ]
       },
-      "gridPos": { "h": 8, "w": 14, "x": 0, "y": 6 },
+      "gridPos": { "h": 8, "w": 9, "x": 0, "y": 6 },
       "id": 11,
       "options": { "sortBy": [{ "desc": false, "displayName": "Runner" }] },
       "targets": [
@@ -277,7 +277,7 @@
           { "matcher": { "id": "byName", "options": "Elapsed" }, "properties": [{ "id": "unit", "value": "s" }] }
         ]
       },
-      "gridPos": { "h": 8, "w": 10, "x": 14, "y": 6 },
+      "gridPos": { "h": 8, "w": 15, "x": 10, "y": 6 },
       "id": 12,
       "options": { "sortBy": [{ "desc": false, "displayName": "Runner" }] },
       "targets": [
