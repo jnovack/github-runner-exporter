@@ -12,14 +12,17 @@ All metrics are prefixed with `github_runner_`.
 
 ## Job Counters
 
-These instruments accumulate in-memory for the lifetime of the exporter process. All completed jobs are recorded regardless of Prometheus scrape interval. Counter resets on exporter restart are handled gracefully by `increase()` in PromQL.
+These instruments accumulate in-memory for the lifetime of the exporter process. Counter resets on exporter restart are handled by `increase()` in PromQL.
 
 > **Replay mode:** On startup, the exporter replays the most recent `Runner_*.log` to reconstruct current state. Jobs seen during replay are **not** counted — counters only record jobs that complete after the exporter starts. This prevents permanent `unknown` label values from polluting metrics when metadata (repo, workflow, actor) is not yet available.
 
 | Metric | Type | Labels | Description |
 | --- | --- | --- | --- |
-| `github_runner_jobs_total` | Counter | `runner_name`, `repo`, `workflow`, `job_name`, `actor`, `status` | Total completed jobs. `status` is one of `succeeded`, `failed`, `cancelled`. |
+| `github_runner_jobs_total` | Counter | `runner_name`, `repo`, `workflow`, `job_name`, `actor`, `status` | Total completed jobs. `status` is one of `succeeded`, `failed`, `cancelled`. Status labelsets are pre-seeded to `0` at job start when metadata is available. |
+| `github_runner_jobs_by_runner_status_total` | Counter | `runner_name`, `status` | Low-cardinality total completed jobs by runner and status. Statuses are pre-seeded to `0` at exporter startup. |
 | `github_runner_job_duration_seconds` | Histogram | `runner_name`, `repo`, `workflow`, `job_name`, `actor` | Job duration in seconds. Buckets: 1, 5, 30, 60, 120, 300, 600, 1800, 3600. |
+
+> **Sampling note:** Pre-seeding improves `increase()` behavior for new status series, but very short jobs that start and finish between Prometheus scrapes can still be undercounted in short range windows.
 
 ## Current Job
 
@@ -97,4 +100,7 @@ github_runner_busy == 1
 
 # Job count per actor over the last 24h
 sum by(actor) (increase(github_runner_jobs_total[24h]))
+
+# Completed jobs by runner/status over dashboard time range
+sum by (runner_name, status) (increase(github_runner_jobs_by_runner_status_total[$__range]))
 ```

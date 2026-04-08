@@ -239,11 +239,19 @@ func TestCollector_JobCounterLabels(t *testing.T) {
 			if labels["job_name"] != "build" {
 				t.Errorf("jobs_total job_name = %q, want %q", labels["job_name"], "build")
 			}
-			if labels["status"] != "succeeded" {
-				t.Errorf("jobs_total status = %q, want %q", labels["status"], "succeeded")
+			status := labels["status"]
+			if status != "succeeded" && status != "failed" && status != "cancelled" {
+				t.Errorf("jobs_total status = %q, want one of succeeded|failed|cancelled", status)
 			}
 			if labels["runner_name"] != "runner-prod-01" {
 				t.Errorf("jobs_total runner_name = %q, want %q", labels["runner_name"], "runner-prod-01")
+			}
+			value := m.GetCounter().GetValue()
+			if status == "succeeded" && value != 1 {
+				t.Errorf("jobs_total value for succeeded = %v, want 1", value)
+			}
+			if (status == "failed" || status == "cancelled") && value != 0 {
+				t.Errorf("jobs_total value for %s = %v, want 0", status, value)
 			}
 		}
 	}

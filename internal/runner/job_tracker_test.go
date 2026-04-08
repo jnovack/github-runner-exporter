@@ -237,6 +237,65 @@ func TestTracker_MetaArrivesAfterStart(t *testing.T) {
 	}
 }
 
+func TestTracker_PreseedsStatusSeriesAtStart(t *testing.T) {
+	reg := prometheus.NewRegistry()
+	tr := NewTracker("runner-q", reg)
+
+	tr.HandleEvent(Event{Kind: EventOnline})
+	tr.SetWorkerMeta(WorkerMeta{
+		Repo: "org/app", Workflow: "CI", RunID: "1", Actor: "alice", JobName: "build",
+	})
+	tr.HandleEvent(Event{Kind: EventJobStarted, JobName: "build"})
+
+	for _, status := range []string{"succeeded", "failed", "cancelled"} {
+		got, ok := findCounterMetricValue(reg, "github_runner_jobs_total", map[string]string{
+			"runner_name": "runner-q",
+			"repo":        "org/app",
+			"workflow":    "CI",
+			"job_name":    "build",
+			"actor":       "alice",
+			"status":      status,
+		})
+		if !ok {
+			t.Fatalf("expected preseeded series for status=%q", status)
+		}
+		if got != 0 {
+			t.Fatalf("expected preseeded zero series for status=%q, got %v", status, got)
+		}
+	}
+}
+
+func TestTracker_LowCardStatusSeriesAlwaysPresent(t *testing.T) {
+	reg := prometheus.NewRegistry()
+	NewTracker("runner-q", reg)
+
+	for _, status := range []string{"succeeded", "failed", "cancelled"} {
+		got, ok := findCounterMetricValue(reg, "github_runner_jobs_by_runner_status_total", map[string]string{
+			"runner_name": "runner-q",
+			"status":      status,
+		})
+		if !ok {
+			t.Fatalf("expected low-card series for status=%q", status)
+		}
+		if got != 0 {
+			t.Fatalf("expected low-card zero series for status=%q, got %v", status, got)
+		}
+	}
+}
+
+func TestTracker_LowCardStatusSeriesIncrementsOnCompletion(t *testing.T) {
+	reg := prometheus.NewRegistry()
+	tr := NewTracker("runner-q", reg)
+	tr.HandleEvent(Event{Kind: EventOnline})
+	tr.HandleEvent(Event{Kind: EventJobStarted, JobName: "build"})
+	tr.HandleEvent(Event{Kind: EventJobCompleted, JobName: "build", Result: "succeeded"})
+
+	got := testutil.ToFloat64(tr.jobsByRunnerStatusTotal.WithLabelValues("runner-q", "succeeded"))
+	if got != 1 {
+		t.Fatalf("jobsByRunnerStatusTotal succeeded = %v, want 1", got)
+	}
+}
+
 // TestTracker_ConcurrentAccess verifies no data races under concurrent load.
 func TestTracker_ConcurrentAccess(t *testing.T) {
 	reg := prometheus.NewRegistry()
@@ -268,4 +327,33 @@ func TestTracker_ConcurrentAccess(t *testing.T) {
 	}
 
 	wg.Wait()
+}
+
+func findCounterMetricValue(reg *prometheus.Registry, metricName string, labels map[string]string) (float64, bool) {
+	mfs, err := reg.Gather()
+	if err != nil {
+		return 0, false
+	}
+	for _, mf := range mfs {
+		if mf.GetName() != metricName {
+			continue
+		}
+		for _, m := range mf.GetMetric() {
+			ok := true
+			labelMap := make(map[string]string, len(m.GetLabel()))
+			for _, p := range m.GetLabel() {
+				labelMap[p.GetName()] = p.GetValue()
+			}
+			for k, v := range labels {
+				if labelMap[k] != v {
+					ok = false
+					break
+				}
+			}
+			if ok {
+				return m.GetCounter().GetValue(), true
+			}
+		}
+	}
+	return 0, false
 }

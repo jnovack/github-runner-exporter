@@ -16,6 +16,8 @@ const (
 	StateBusy
 )
 
+var completionStatuses = []string{"succeeded", "failed", "cancelled"}
+
 func (s State) String() string {
 	switch s {
 	case StateIdle:
@@ -60,8 +62,9 @@ type Tracker struct {
 	liveMode bool
 
 	// Prometheus instruments — registered once, observed per job.
-	jobsTotal   *prometheus.CounterVec
-	jobDuration *prometheus.HistogramVec
+	jobsTotal                *prometheus.CounterVec
+	jobsByRunnerStatusTotal  *prometheus.CounterVec
+	jobDuration              *prometheus.HistogramVec
 }
 
 // NewTracker creates a Tracker and registers its Prometheus instruments with reg.
@@ -78,6 +81,13 @@ func NewTracker(runnerName string, reg prometheus.Registerer) *Tracker {
 			},
 			[]string{"runner_name", "repo", "workflow", "job_name", "actor", "status"},
 		),
+		jobsByRunnerStatusTotal: prometheus.NewCounterVec(
+			prometheus.CounterOpts{
+				Name: "github_runner_jobs_by_runner_status_total",
+				Help: "Total completed jobs by runner and terminal status.",
+			},
+			[]string{"runner_name", "status"},
+		),
 		jobDuration: prometheus.NewHistogramVec(
 			prometheus.HistogramOpts{
 				Name:    "github_runner_job_duration_seconds",
@@ -88,7 +98,12 @@ func NewTracker(runnerName string, reg prometheus.Registerer) *Tracker {
 		),
 	}
 
-	reg.MustRegister(t.jobsTotal, t.jobDuration)
+	reg.MustRegister(t.jobsTotal, t.jobsByRunnerStatusTotal, t.jobDuration)
+	// Pre-seed low-cardinality status series so range queries can observe
+	// transitions without waiting for all statuses to occur.
+	for _, status := range completionStatuses {
+		t.jobsByRunnerStatusTotal.WithLabelValues(runnerName, status).Add(0)
+	}
 	return t
 }
 
@@ -112,6 +127,9 @@ func (t *Tracker) HandleEvent(ev Event) {
 			StartedAt:  ev.Timestamp,
 		}
 		t.applyPendingMeta()
+		if t.liveMode {
+			t.preseedCurrentStatusSeries()
+		}
 
 	case EventJobCompleted:
 		if t.current == nil {
@@ -146,6 +164,9 @@ func (t *Tracker) SetWorkerMeta(meta WorkerMeta) {
 	t.pendingMeta = &meta
 	if t.current != nil {
 		t.applyPendingMeta()
+		if t.liveMode {
+			t.preseedCurrentStatusSeries()
+		}
 	}
 }
 
@@ -232,7 +253,24 @@ func (t *Tracker) recordCompletion(job *JobInfo) {
 	status := orUnknown(job.Status)
 
 	t.jobsTotal.WithLabelValues(job.RunnerName, repo, workflow, jobName, actor, status).Inc()
+	t.jobsByRunnerStatusTotal.WithLabelValues(job.RunnerName, status).Inc()
 	t.jobDuration.WithLabelValues(job.RunnerName, repo, workflow, jobName, actor).Observe(job.Duration.Seconds())
+}
+
+// preseedCurrentStatusSeries initializes status-labeled counters at zero for the
+// current job labelset so Prometheus can observe 0->1 transitions.
+// Must be called with t.mu held.
+func (t *Tracker) preseedCurrentStatusSeries() {
+	if t.current == nil {
+		return
+	}
+	repo := orUnknown(t.current.Repo)
+	workflow := orUnknown(t.current.Workflow)
+	jobName := orUnknown(t.current.JobName)
+	actor := orUnknown(t.current.Actor)
+	for _, status := range completionStatuses {
+		t.jobsTotal.WithLabelValues(t.current.RunnerName, repo, workflow, jobName, actor, status).Add(0)
+	}
 }
 
 // Snapshot returns a point-in-time copy of the tracker state for metric collection.

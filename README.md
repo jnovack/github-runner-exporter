@@ -60,6 +60,7 @@ On startup it replays the most recent `Runner_*.log` to reconstruct current stat
 | `github_runner_online` | Gauge | 1 when listening for jobs |
 | `github_runner_busy` | Gauge | 1 when a job is executing |
 | `github_runner_jobs_total` | Counter | Completed jobs by `runner_name`, `repo`, `workflow`, `job_name`, `actor`, `status` |
+| `github_runner_jobs_by_runner_status_total` | Counter | Completed jobs by low-cardinality labels: `runner_name`, `status` |
 | `github_runner_job_duration_seconds` | Histogram | Job durations by `runner_name`, `repo`, `workflow`, `job_name`, `actor` (buckets: 1s–1h) |
 | `github_runner_current_job_info` | Gauge | Metadata for in-progress job (`runner_name`, `repo`, `workflow`, `job_name`, `actor`) |
 | `github_runner_last_job_info` | Gauge | Metadata for most recently completed job (`runner_name`, `repo`, `workflow`, `job_name`, `actor`, `status`) |
@@ -88,6 +89,9 @@ sum by(actor) (increase(github_runner_job_duration_seconds_sum[1h]))
 github_runner_busy == 1
   * on(runner_name) group_left(actor, repo, workflow)
   github_runner_current_job_info
+
+# Completed jobs by runner/status in selected range
+sum by (runner_name, status) (increase(github_runner_jobs_by_runner_status_total[24h]))
 ```
 
 ## Configuration
