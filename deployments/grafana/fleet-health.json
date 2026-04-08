@@ -233,6 +233,14 @@
           "format": "table",
           "legendFormat": "__auto",
           "refId": "C"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "expr": "max by(instance, runner_name, version) (github_runner_info{instance=~\"$runner\"})",
+          "instant": true,
+          "format": "table",
+          "legendFormat": "__auto",
+          "refId": "D"
         }
       ],
       "title": "Runner Status Table",
@@ -248,8 +256,8 @@
               "job": true,
               "group": true,
               "os": true,
-              "version": true,
-              "revision": true
+              "revision": true,
+              "Value #D": true
             },
             "renameByName": {
               "runner_name": "Runner",
