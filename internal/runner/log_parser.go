@@ -39,7 +39,7 @@ type WorkerMeta struct {
 // logLineRe matches the standard runner log format:
 // [YYYY-MM-DD HH:MM:SSZ LEVEL Component] message
 var logLineRe = regexp.MustCompile(
-	`^\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})Z\s+\w+\s+\w+\]\s+(.+)$`,
+	`^\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})Z[^\]]*\]\s+(.+)$`,
 )
 
 const logTimeLayout = "2006-01-02 15:04:05"
@@ -66,13 +66,7 @@ func ParseLine(line string) (Event, bool) {
 	// Runner >= 2.333 routes console output through the Terminal component with a
 	// "WRITE LINE: DATETIME: " prefix. Strip it so the switch below works for
 	// both old and new runner versions.
-	const writeLine = "WRITE LINE: "
-	if strings.HasPrefix(msg, writeLine) {
-		rest := msg[len(writeLine):]
-		if idx := strings.Index(rest, ": "); idx >= 0 {
-			msg = rest[idx+2:]
-		}
-	}
+	msg = normalizeWriteLineMessage(msg)
 
 	switch {
 	case msg == "Listening for Jobs":
@@ -95,6 +89,41 @@ func ParseLine(line string) (Event, bool) {
 	}
 
 	return Event{}, false
+}
+
+// normalizeWriteLineMessage unwraps Terminal "WRITE LINE:" log payloads.
+// Newer runners often prepend a console timestamp inside the message (for
+// example: "2024-03-15 08:00:02Z: Listening for Jobs"), but some lines may not.
+func normalizeWriteLineMessage(msg string) string {
+	const writeLine = "WRITE LINE: "
+	if !strings.HasPrefix(msg, writeLine) {
+		return msg
+	}
+	rest := strings.TrimSpace(msg[len(writeLine):])
+	parts := strings.SplitN(rest, ": ", 2)
+	if len(parts) != 2 {
+		return rest
+	}
+	if isRunnerConsoleTimestamp(parts[0]) {
+		return parts[1]
+	}
+	return rest
+}
+
+func isRunnerConsoleTimestamp(s string) bool {
+	layouts := []string{
+		"2006-01-02 15:04:05Z",
+		"2006-01-02T15:04:05Z",
+		"2006-01-02T15:04:05.000Z",
+		"2006-01-02T15:04:05Z07:00",
+		"2006-01-02T15:04:05.000Z07:00",
+	}
+	for _, layout := range layouts {
+		if _, err := time.Parse(layout, s); err == nil {
+			return true
+		}
+	}
+	return false
 }
 
 // ParseWorkerLog scans all lines in a Worker_*.log file content for job metadata.

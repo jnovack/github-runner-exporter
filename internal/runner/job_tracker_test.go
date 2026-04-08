@@ -61,6 +61,27 @@ func TestTracker_OnlineTransition(t *testing.T) {
 	}
 }
 
+// TestTracker_OnlineClearsStaleCurrent verifies that a "Listening for Jobs"
+// event clears stale in-progress state if completion was missed.
+func TestTracker_OnlineClearsStaleCurrent(t *testing.T) {
+	tr := newTestTracker(t)
+	tr.HandleEvent(Event{Kind: EventJobStarted, Timestamp: ts("2024-03-15 08:05:10"), JobName: "build"})
+
+	snap := tr.Snapshot()
+	if snap.State != StateBusy || snap.Current == nil {
+		t.Fatalf("precondition failed: expected busy with current job, got state=%v current=%v", snap.State, snap.Current)
+	}
+
+	tr.HandleEvent(Event{Kind: EventOnline, Timestamp: ts("2024-03-15 08:07:46")})
+	snap = tr.Snapshot()
+	if snap.State != StateIdle {
+		t.Errorf("state after EventOnline = %v, want StateIdle", snap.State)
+	}
+	if snap.Current != nil {
+		t.Errorf("current after EventOnline = %v, want nil", snap.Current)
+	}
+}
+
 // TestTracker_HappyPath exercises IDLE → BUSY → IDLE for a successful job.
 func TestTracker_HappyPath(t *testing.T) {
 	reg := prometheus.NewRegistry()

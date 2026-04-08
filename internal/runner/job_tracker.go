@@ -100,6 +100,9 @@ func (t *Tracker) HandleEvent(ev Event) {
 	switch ev.Kind {
 	case EventOnline:
 		t.state = StateIdle
+		// If completion was missed, "Listening for Jobs" is authoritative that
+		// no job is currently executing.
+		t.current = nil
 
 	case EventJobStarted:
 		t.state = StateBusy

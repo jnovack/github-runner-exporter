@@ -126,6 +126,27 @@ func TestParseLine(t *testing.T) {
 			wantJob:    "build",
 			wantResult: "succeeded",
 		},
+		{
+			name:     "write line without embedded console timestamp",
+			line:     "[2024-03-15 08:05:10Z INFO Terminal] WRITE LINE: Running job: build",
+			wantOK:   true,
+			wantKind: EventJobStarted,
+			wantJob:  "build",
+		},
+		{
+			name:       "write line without embedded console timestamp completed",
+			line:       "[2024-03-15 08:07:45Z INFO Terminal] WRITE LINE: Job build completed with result: Succeeded",
+			wantOK:     true,
+			wantKind:   EventJobCompleted,
+			wantJob:    "build",
+			wantResult: "succeeded",
+		},
+		{
+			name:     "component with punctuation",
+			line:     "[2024-03-15 08:00:02Z INFO Runner.Listener-1] WRITE LINE: 2024-03-15 08:00:02Z: Listening for Jobs",
+			wantOK:   true,
+			wantKind: EventOnline,
+		},
 	}
 
 	for _, tt := range tests {
