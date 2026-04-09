@@ -247,7 +247,7 @@ func TestTracker_PreseedsStatusSeriesAtStart(t *testing.T) {
 	})
 	tr.HandleEvent(Event{Kind: EventJobStarted, JobName: "build"})
 
-	for _, status := range []string{"succeeded", "failed", "cancelled"} {
+	for _, status := range []string{"succeeded", "failed", "canceled"} {
 		got, ok := findCounterMetricValue(reg, "github_runner_jobs_total", map[string]string{
 			"runner_name": "runner-q",
 			"repo":        "org/app",
@@ -269,7 +269,7 @@ func TestTracker_LowCardStatusSeriesAlwaysPresent(t *testing.T) {
 	reg := prometheus.NewRegistry()
 	NewTracker("runner-q", reg)
 
-	for _, status := range []string{"succeeded", "failed", "cancelled"} {
+	for _, status := range []string{"succeeded", "failed", "canceled"} {
 		got, ok := findCounterMetricValue(reg, "github_runner_jobs_by_runner_status_total", map[string]string{
 			"runner_name": "runner-q",
 			"status":      status,
@@ -327,6 +327,33 @@ func TestTracker_ConcurrentAccess(t *testing.T) {
 	}
 
 	wg.Wait()
+}
+
+// TestPreseedJobLabels verifies that all terminal status series are initialized
+// at zero before any job has completed.
+func TestPreseedJobLabels(t *testing.T) {
+	reg := prometheus.NewRegistry()
+	tracker := NewTracker("runner-1", reg)
+
+	tracker.PreseedJobLabels("octocat/hello-world", "CI", "build", "monalisa")
+
+	for _, status := range []string{"succeeded", "failed", "canceled"} {
+		val, ok := findCounterMetricValue(reg, "github_runner_jobs_total", map[string]string{
+			"runner_name": "runner-1",
+			"repo":        "octocat/hello-world",
+			"workflow":    "CI",
+			"job_name":    "build",
+			"actor":       "monalisa",
+			"status":      status,
+		})
+		if !ok {
+			t.Errorf("status=%q series not present after PreseedJobLabels", status)
+			continue
+		}
+		if val != 0 {
+			t.Errorf("status=%q series value = %v, want 0", status, val)
+		}
+	}
 }
 
 func findCounterMetricValue(reg *prometheus.Registry, metricName string, labels map[string]string) (float64, bool) {

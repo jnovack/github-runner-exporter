@@ -18,7 +18,7 @@ These instruments accumulate in-memory for the lifetime of the exporter process.
 
 | Metric | Type | Labels | Description |
 | --- | --- | --- | --- |
-| `github_runner_jobs_total` | Counter | `runner_name`, `repo`, `workflow`, `job_name`, `actor`, `status` | Total completed jobs. `status` is one of `succeeded`, `failed`, `cancelled`. Status labelsets are pre-seeded to `0` at job start when metadata is available. |
+| `github_runner_jobs_total` | Counter | `runner_name`, `repo`, `workflow`, `job_name`, `actor`, `status` | Total completed jobs. `status` is one of `succeeded`, `failed`, `canceled`. Status labelsets are pre-seeded to `0` at job start when metadata is available. |
 | `github_runner_jobs_by_runner_status_total` | Counter | `runner_name`, `status` | Low-cardinality total completed jobs by runner and status. Statuses are pre-seeded to `0` at exporter startup. |
 | `github_runner_job_duration_seconds` | Histogram | `runner_name`, `repo`, `workflow`, `job_name`, `actor` | Job duration in seconds. Buckets: 1, 5, 30, 60, 120, 300, 600, 1800, 3600. |
 
@@ -56,7 +56,7 @@ Reflects the most recently completed job only. Useful for alerting on failures a
 | `workflow` | Worker log `workflow` context value | Display name of the workflow. Falls back to `unknown`. |
 | `job_name` | Worker log `jobDisplayName` field | Job name from the workflow YAML (includes matrix dimension). Falls back to `unknown`. |
 | `actor` | Worker log `triggeredBy` context value | GitHub username that triggered the workflow. Falls back to `unknown`. |
-| `status` | Runner log completion result | Lowercase: `succeeded`, `failed`, `cancelled`. |
+| `status` | Runner log completion result | Lowercase: `succeeded`, `failed`, `canceled`. Both runner spellings ("Canceled"/"Cancelled") are normalized to `canceled`. |
 
 ## Example PromQL Queries
 

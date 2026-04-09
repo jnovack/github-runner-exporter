@@ -1,0 +1,6 @@
+[2024-03-15 07:00:00Z INFO HostContext] Well known directory 'Bin': '/actions-runner/bin.2.312.0'
+[2024-03-15 07:00:00Z INFO BrokerMessageListener] Session created.
+[2024-03-15 07:00:01Z INFO Runner.Listener] Listening for Jobs
+[2024-03-15 07:00:05Z INFO JobDispatcher] Running job: package
+[2024-03-15 07:01:30Z INFO JobDispatcher] Job package completed with result: Succeeded
+[2024-03-15 07:01:31Z INFO Runner.Listener] Listening for Jobs

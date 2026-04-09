@@ -1,0 +1,5 @@
+[2024-03-15 11:00:00Z INFO HostContext] Well known directory 'Bin': '/actions-runner/bin.2.333.1'
+[2024-03-15 11:00:00Z INFO Worker] Version: 2.333.1
+[2024-03-15 11:00:00Z INFO Worker] Commit: 6792966801e8925346735b68c03bf9f347af4646
+[2024-03-15 11:00:00Z INFO Worker] Waiting to receive the job message from the channel.
+[2024-03-15 11:00:01Z INFO Worker] Message received.

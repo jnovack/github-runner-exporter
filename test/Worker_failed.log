@@ -1,9 +1,9 @@
-[2024-03-15 08:15:01Z INFO HostContext] Well known directory 'Bin': '/actions-runner/bin.2.333.1'
-[2024-03-15 08:15:01Z INFO Worker] Version: 2.333.1
-[2024-03-15 08:15:01Z INFO Worker] Commit: 6792966801e8925346735b68c03bf9f347af4646
-[2024-03-15 08:15:01Z INFO Worker] Waiting to receive the job message from the channel.
-[2024-03-15 08:15:01Z INFO Worker] Message received.
-[2024-03-15 08:15:01Z INFO Worker] Job message:
+[2024-03-15 08:15:00Z INFO HostContext] Well known directory 'Bin': '/actions-runner/bin.2.333.1'
+[2024-03-15 08:15:00Z INFO Worker] Version: 2.333.1
+[2024-03-15 08:15:00Z INFO Worker] Commit: 6792966801e8925346735b68c03bf9f347af4646
+[2024-03-15 08:15:00Z INFO Worker] Waiting to receive the job message from the channel.
+[2024-03-15 08:15:00Z INFO Worker] Message received.
+[2024-03-15 08:15:00Z INFO Worker] Job message:
  {
   "jobDisplayName": "test",
   "jobId": "a1b2c3d4-0000-0000-0000-000000000002",
@@ -13,15 +13,39 @@
       "d": [
         {
           "k": "repository",
-          "v": "myorg/myapp"
+          "v": "octocat/hello-world"
+        },
+        {
+          "k": "repository_owner",
+          "v": "octocat"
+        },
+        {
+          "k": "repository_owner_id",
+          "v": "583231"
+        },
+        {
+          "k": "repositoryUrl",
+          "v": "git://github.com/octocat/hello-world.git"
         },
         {
           "k": "run_id",
-          "v": "8675310"
+          "v": "9000000002"
+        },
+        {
+          "k": "run_number",
+          "v": "43"
+        },
+        {
+          "k": "run_attempt",
+          "v": "1"
+        },
+        {
+          "k": "actor_id",
+          "v": "1"
         },
         {
           "k": "actor",
-          "v": "jnovack"
+          "v": "monalisa"
         },
         {
           "k": "workflow",
@@ -32,5 +56,13 @@
   }
 }
 [2024-03-15 08:15:02Z INFO Worker] Operating System: Ubuntu 22.04.3 LTS
-[2024-03-15 08:18:29Z ERROR Worker] ##[error]Process completed with exit code 1.
-[2024-03-15 08:18:29Z INFO Worker] Job failed
+[2024-03-15 08:15:02Z INFO StepsRunner] Running job: test
+[2024-03-15 08:15:03Z INFO Worker] Starting: Set up job
+[2024-03-15 08:15:04Z INFO Worker] ##[group]Run actions/checkout@v4
+[2024-03-15 08:15:05Z INFO Worker] Syncing repository: octocat/hello-world
+[2024-03-15 08:15:06Z INFO Worker] ##[endgroup]
+[2024-03-15 08:15:07Z INFO Worker] ##[group]Run tests
+[2024-03-15 08:18:20Z ERROR Worker] ##[error]Process completed with exit code 1.
+[2024-03-15 08:18:20Z INFO Worker] ##[endgroup]
+[2024-03-15 08:18:25Z INFO Worker] Post job cleanup.
+[2024-03-15 08:18:29Z INFO JobRunner] Job result after all job steps finish: Failed

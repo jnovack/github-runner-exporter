@@ -13,19 +13,39 @@
       "d": [
         {
           "k": "repository",
-          "v": "myorg/myapp"
+          "v": "octocat/hello-world"
+        },
+        {
+          "k": "repository_owner",
+          "v": "octocat"
+        },
+        {
+          "k": "repository_owner_id",
+          "v": "583231"
+        },
+        {
+          "k": "repositoryUrl",
+          "v": "git://github.com/octocat/hello-world.git"
         },
         {
           "k": "run_id",
-          "v": "8675312"
+          "v": "9000000004"
+        },
+        {
+          "k": "run_number",
+          "v": "44"
         },
         {
           "k": "run_attempt",
           "v": "2"
         },
         {
+          "k": "actor_id",
+          "v": "1"
+        },
+        {
           "k": "actor",
-          "v": "jnovack"
+          "v": "monalisa"
         },
         {
           "k": "workflow",
@@ -36,4 +56,13 @@
   }
 }
 [2024-03-15 10:05:02Z INFO Worker] Operating System: Ubuntu 22.04.3 LTS
-[2024-03-15 10:06:30Z INFO Worker] Job succeeded
+[2024-03-15 10:05:02Z INFO StepsRunner] Running job: build-docker-image
+[2024-03-15 10:05:03Z INFO Worker] Starting: Set up job
+[2024-03-15 10:05:04Z INFO Worker] ##[group]Run actions/checkout@v4
+[2024-03-15 10:05:05Z INFO Worker] Syncing repository: octocat/hello-world
+[2024-03-15 10:05:06Z INFO Worker] ##[endgroup]
+[2024-03-15 10:05:07Z INFO Worker] ##[group]Build and push Docker image
+[2024-03-15 10:06:10Z INFO Worker] Successfully tagged octocat/hello-world:latest
+[2024-03-15 10:06:25Z INFO Worker] ##[endgroup]
+[2024-03-15 10:06:29Z INFO Worker] Post job cleanup.
+[2024-03-15 10:06:30Z INFO JobRunner] Job result after all job steps finish: Succeeded

@@ -151,7 +151,7 @@ func TestStartup_ReplayThenWalkEnrichesLast(t *testing.T) {
 	// Simulate the startup sequence from watcher.Run.
 	tracker.EnterReplayMode()
 	w.replayRunnerLog(runnerLog)
-	WalkExistingWorkerLogs(dir, tracker)
+	WalkExistingWorkerLogs(dir, tracker, 0)
 	tracker.EnrichLastFromPendingMeta()
 	tracker.EnterLiveMode()
 
@@ -159,17 +159,17 @@ func TestStartup_ReplayThenWalkEnrichesLast(t *testing.T) {
 	if snap.Last == nil {
 		t.Fatal("expected last job after replay, got nil")
 	}
-	if snap.Last.Repo != "myorg/myapp" {
-		t.Errorf("Last.Repo = %q, want %q", snap.Last.Repo, "myorg/myapp")
+	if snap.Last.Repo != "octocat/hello-world" {
+		t.Errorf("Last.Repo = %q, want %q", snap.Last.Repo, "octocat/hello-world")
 	}
 	if snap.Last.Workflow != "CI" {
 		t.Errorf("Last.Workflow = %q, want %q", snap.Last.Workflow, "CI")
 	}
-	if snap.Last.Actor != "jnovack" {
-		t.Errorf("Last.Actor = %q, want %q", snap.Last.Actor, "jnovack")
+	if snap.Last.Actor != "monalisa" {
+		t.Errorf("Last.Actor = %q, want %q", snap.Last.Actor, "monalisa")
 	}
-	if snap.Last.RunID != "8675309" {
-		t.Errorf("Last.RunID = %q, want %q", snap.Last.RunID, "8675309")
+	if snap.Last.RunID != "9000000001" {
+		t.Errorf("Last.RunID = %q, want %q", snap.Last.RunID, "9000000001")
 	}
 }
 
@@ -243,8 +243,8 @@ func TestReadWorkerLog_SetsTrackerMeta(t *testing.T) {
 	if snap.Current == nil {
 		t.Fatal("current is nil")
 	}
-	if snap.Current.Repo != "myorg/myapp" {
-		t.Errorf("Repo = %q, want %q", snap.Current.Repo, "myorg/myapp")
+	if snap.Current.Repo != "octocat/hello-world" {
+		t.Errorf("Repo = %q, want %q", snap.Current.Repo, "octocat/hello-world")
 	}
 }
 
@@ -286,26 +286,26 @@ func TestWalkExistingWorkerLogs(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	WalkExistingWorkerLogs(dir, tracker)
+	WalkExistingWorkerLogs(dir, tracker, 0)
 
 	// Trigger a job so meta is applied.
 	tracker.HandleEvent(Event{Kind: EventJobStarted, JobName: "build"})
 	snap := tracker.Snapshot()
-	if snap.Current == nil || snap.Current.Repo != "myorg/myapp" {
+	if snap.Current == nil || snap.Current.Repo != "octocat/hello-world" {
 		t.Errorf("Repo after WalkExistingWorkerLogs = %q, want %q",
 			func() string {
 				if snap.Current == nil {
 					return "<nil>"
 				}
 				return snap.Current.Repo
-			}(), "myorg/myapp")
+			}(), "octocat/hello-world")
 	}
 }
 
 // TestWalkExistingWorkerLogs_EmptyDir verifies no panic on empty directory.
 func TestWalkExistingWorkerLogs_EmptyDir(t *testing.T) {
 	tracker := newTestTrackerFor(t, "runner")
-	WalkExistingWorkerLogs(t.TempDir(), tracker) // should not panic
+	WalkExistingWorkerLogs(t.TempDir(), tracker, 0) // should not panic
 }
 
 // TestWalkExistingWorkerLogs_NonWorkerFilesIgnored verifies non-Worker files are skipped.
@@ -319,7 +319,7 @@ func TestWalkExistingWorkerLogs_NonWorkerFilesIgnored(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "not-a-log.txt"), []byte("also ignored\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	WalkExistingWorkerLogs(dir, tracker)
+	WalkExistingWorkerLogs(dir, tracker, 0)
 	// State should remain offline — no meta should have been applied.
 	if tracker.Snapshot().State != StateOffline {
 		t.Error("state should remain offline when no Worker logs are present")
@@ -416,7 +416,7 @@ func TestHandleFSEvent_NewWorkerLog(t *testing.T) {
 
 	tracker.HandleEvent(Event{Kind: EventJobStarted, JobName: "build"})
 	snap := tracker.Snapshot()
-	if snap.Current == nil || snap.Current.Repo != "myorg/myapp" {
+	if snap.Current == nil || snap.Current.Repo != "octocat/hello-world" {
 		t.Error("worker meta not applied after Create event for Worker log")
 	}
 }
@@ -457,7 +457,7 @@ func TestHandleFSEvent_WorkerLog_WriteEvent(t *testing.T) {
 	w.handleFSEvent(fsnotify.Event{Name: workerPath, Op: fsnotify.Write}, &runnerLog, &offset)
 
 	snap = tracker.Snapshot()
-	if snap.Current == nil || snap.Current.Repo != "myorg/myapp" {
+	if snap.Current == nil || snap.Current.Repo != "octocat/hello-world" {
 		t.Error("expected repo metadata to be applied after Write event with full content")
 	}
 }

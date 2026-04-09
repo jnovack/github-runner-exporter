@@ -240,8 +240,8 @@ func TestCollector_JobCounterLabels(t *testing.T) {
 				t.Errorf("jobs_total job_name = %q, want %q", labels["job_name"], "build")
 			}
 			status := labels["status"]
-			if status != "succeeded" && status != "failed" && status != "cancelled" {
-				t.Errorf("jobs_total status = %q, want one of succeeded|failed|cancelled", status)
+			if status != "succeeded" && status != "failed" && status != "canceled" {
+				t.Errorf("jobs_total status = %q, want one of succeeded|failed|canceled", status)
 			}
 			if labels["runner_name"] != "runner-prod-01" {
 				t.Errorf("jobs_total runner_name = %q, want %q", labels["runner_name"], "runner-prod-01")
@@ -250,7 +250,7 @@ func TestCollector_JobCounterLabels(t *testing.T) {
 			if status == "succeeded" && value != 1 {
 				t.Errorf("jobs_total value for succeeded = %v, want 1", value)
 			}
-			if (status == "failed" || status == "cancelled") && value != 0 {
+			if (status == "failed" || status == "canceled") && value != 0 {
 				t.Errorf("jobs_total value for %s = %v, want 0", status, value)
 			}
 		}

@@ -68,6 +68,8 @@ func main() {
 		"Address on which to expose Prometheus metrics")
 	logLevel := fs.String("log-level", "info",
 		"Log verbosity: debug, info, warn, error")
+	walkWindow := fs.Duration("walk-window", 90*24*time.Hour,
+		"How far back to scan Worker logs on startup for label pre-seeding (e.g. 720h, 2160h)")
 	showVersion := fs.Bool("version", false,
 		"Print version information and exit")
 
@@ -109,6 +111,7 @@ func main() {
 
 	diagDir := cfg.DiagDir(*runnerDir)
 	watcher := runner.NewWatcher(diagDir, tracker)
+	watcher.SetWalkWindow(*walkWindow)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()

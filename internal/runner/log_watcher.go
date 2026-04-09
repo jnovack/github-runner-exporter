@@ -20,20 +20,29 @@ import (
 //
 // It sends parsed Events and WorkerMeta values to the provided Tracker.
 type Watcher struct {
-	diagDir       string
-	tracker       *Tracker
-	poll          time.Duration // fallback poll interval when fsnotify misses events
-	harvestedLogs map[string]bool // Worker log paths where full metadata was obtained
+	diagDir        string
+	tracker        *Tracker
+	poll           time.Duration   // fallback poll interval when fsnotify misses events
+	walkWindow     time.Duration   // how far back to scan Worker logs on startup; 0 = unlimited
+	harvestedLogs  map[string]bool // Worker log paths where full metadata was obtained
 }
 
 // NewWatcher creates a Watcher for the given _diag directory.
+// The walk window defaults to 90 days; override with SetWalkWindow.
 func NewWatcher(diagDir string, tracker *Tracker) *Watcher {
 	return &Watcher{
 		diagDir:       diagDir,
 		tracker:       tracker,
 		poll:          5 * time.Second,
+		walkWindow:    90 * 24 * time.Hour,
 		harvestedLogs: make(map[string]bool),
 	}
+}
+
+// SetWalkWindow overrides the window of Worker logs scanned on startup for label
+// pre-seeding. A value of 0 disables the time filter (scan all files).
+func (w *Watcher) SetWalkWindow(d time.Duration) {
+	w.walkWindow = d
 }
 
 // Run starts watching the diag directory until ctx is cancelled.
@@ -57,8 +66,9 @@ func (w *Watcher) Run(ctx context.Context) error {
 	if runnerLog != "" {
 		runnerOffset = w.replayRunnerLog(runnerLog)
 	}
-	// Walk existing Worker logs so in-progress and last-completed jobs get metadata.
-	WalkExistingWorkerLogs(w.diagDir, w.tracker)
+	// Walk existing Worker logs so in-progress and last-completed jobs get metadata,
+	// and pre-seed label cardinalities from historical jobs.
+	WalkExistingWorkerLogs(w.diagDir, w.tracker, w.walkWindow)
 	// Enrich last job info with the most recent Worker log metadata.
 	w.tracker.EnrichLastFromPendingMeta()
 	// From this point on, completed jobs are recorded in counters/histograms.
@@ -232,20 +242,38 @@ func isWorkerLog(name string) bool {
 
 // WalkExistingWorkerLogs reads all Worker_*.log files already present in diagDir.
 // Useful for initial state reconstruction (metadata only; no duplicate events).
-func WalkExistingWorkerLogs(diagDir string, tracker *Tracker) {
+//
+// walkWindow limits how far back in time to look: files older than
+// time.Now().Add(-walkWindow) are skipped. Pass 0 to scan all files.
+//
+// For each complete Worker log (all five metadata fields present), the label
+// combination is pre-seeded in the tracker so it survives across restarts.
+func WalkExistingWorkerLogs(diagDir string, tracker *Tracker, walkWindow time.Duration) {
+	cutoff := time.Time{}
+	if walkWindow > 0 {
+		cutoff = time.Now().Add(-walkWindow)
+	}
+
 	_ = filepath.WalkDir(diagDir, func(path string, d fs.DirEntry, err error) error {
-		if err != nil || d.IsDir() {
+		if err != nil || d.IsDir() || !isWorkerLog(d.Name()) {
 			return nil
 		}
-		if isWorkerLog(d.Name()) {
-			data, rerr := os.ReadFile(path) // #nosec G304
-			if rerr != nil {
+		if !cutoff.IsZero() {
+			info, ierr := d.Info()
+			if ierr != nil || info.ModTime().Before(cutoff) {
 				return nil
 			}
-			meta := ParseWorkerLog(string(data))
-			if meta.Repo != "" || meta.JobName != "" {
-				tracker.SetWorkerMeta(meta)
-			}
+		}
+		data, rerr := os.ReadFile(path) // #nosec G304
+		if rerr != nil {
+			return nil
+		}
+		meta := ParseWorkerLog(string(data))
+		if meta.Repo != "" || meta.JobName != "" {
+			tracker.SetWorkerMeta(meta)
+		}
+		if meta.Repo != "" && meta.Workflow != "" && meta.Actor != "" && meta.JobName != "" {
+			tracker.PreseedJobLabels(meta.Repo, meta.Workflow, meta.JobName, meta.Actor)
 		}
 		return nil
 	})

@@ -8,5 +8,5 @@
 [2024-03-15 08:18:30Z INFO Terminal] WRITE LINE: 2024-03-15 08:18:30Z: Job test completed with result: Failed
 [2024-03-15 08:18:31Z INFO Terminal] WRITE LINE: 2024-03-15 08:18:31Z: Listening for Jobs
 [2024-03-15 09:00:00Z INFO Terminal] WRITE LINE: 2024-03-15 09:00:00Z: Running job: deploy
-[2024-03-15 09:03:12Z INFO Terminal] WRITE LINE: 2024-03-15 09:03:12Z: Job deploy completed with result: Cancelled
+[2024-03-15 09:03:12Z INFO Terminal] WRITE LINE: 2024-03-15 09:03:12Z: Job deploy completed with result: Canceled
 [2024-03-15 09:03:13Z INFO Terminal] WRITE LINE: 2024-03-15 09:03:13Z: Listening for Jobs

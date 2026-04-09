@@ -50,12 +50,22 @@ func TestParseLine(t *testing.T) {
 			wantResult: "failed",
 		},
 		{
-			name:       "job completed cancelled",
+			// Modern runners (≥2.333.1) emit "Canceled" (one l); older runners emit
+			// "Cancelled" (two l's). ParseLine normalizes both to "canceled".
+			name:       "job completed canceled",
+			line:       "[2024-03-15 09:03:12Z INFO Terminal] WRITE LINE: 2024-03-15 09:03:12Z: Job deploy completed with result: Canceled",
+			wantOK:     true,
+			wantKind:   EventJobCompleted,
+			wantJob:    "deploy",
+			wantResult: "canceled",
+		},
+		{
+			name:       "job completed cancelled normalizes to canceled",
 			line:       "[2024-03-15 09:03:12Z INFO Terminal] WRITE LINE: 2024-03-15 09:03:12Z: Job deploy completed with result: Cancelled",
 			wantOK:     true,
 			wantKind:   EventJobCompleted,
 			wantJob:    "deploy",
-			wantResult: "cancelled",
+			wantResult: "canceled",
 		},
 		{
 			name:     "job name with spaces",
@@ -181,17 +191,17 @@ func TestParseWorkerLog_Succeeded(t *testing.T) {
 	}
 
 	meta := ParseWorkerLog(string(content))
-	if meta.Repo != "myorg/myapp" {
-		t.Errorf("Repo = %q, want %q", meta.Repo, "myorg/myapp")
+	if meta.Repo != "octocat/hello-world" {
+		t.Errorf("Repo = %q, want %q", meta.Repo, "octocat/hello-world")
 	}
 	if meta.Workflow != "CI" {
 		t.Errorf("Workflow = %q, want %q", meta.Workflow, "CI")
 	}
-	if meta.RunID != "8675309" {
-		t.Errorf("RunID = %q, want %q", meta.RunID, "8675309")
+	if meta.RunID != "9000000001" {
+		t.Errorf("RunID = %q, want %q", meta.RunID, "9000000001")
 	}
-	if meta.Actor != "jnovack" {
-		t.Errorf("Actor = %q, want %q", meta.Actor, "jnovack")
+	if meta.Actor != "monalisa" {
+		t.Errorf("Actor = %q, want %q", meta.Actor, "monalisa")
 	}
 	if meta.JobName != "build" {
 		t.Errorf("JobName = %q, want %q", meta.JobName, "build")
@@ -204,8 +214,8 @@ func TestParseWorkerLog_Failed(t *testing.T) {
 		t.Fatalf("read fixture: %v", err)
 	}
 	meta := ParseWorkerLog(string(content))
-	if meta.Repo != "myorg/myapp" {
-		t.Errorf("Repo = %q, want %q", meta.Repo, "myorg/myapp")
+	if meta.Repo != "octocat/hello-world" {
+		t.Errorf("Repo = %q, want %q", meta.Repo, "octocat/hello-world")
 	}
 	if meta.JobName != "test" {
 		t.Errorf("JobName = %q, want %q", meta.JobName, "test")
@@ -218,8 +228,14 @@ func TestParseWorkerLog_Cancelled(t *testing.T) {
 		t.Fatalf("read fixture: %v", err)
 	}
 	meta := ParseWorkerLog(string(content))
-	if meta.Workflow != "CD" {
-		t.Errorf("Workflow = %q, want %q", meta.Workflow, "CD")
+	if meta.Repo != "octocat/hello-world" {
+		t.Errorf("Repo = %q, want %q", meta.Repo, "octocat/hello-world")
+	}
+	if meta.Workflow != "Release" {
+		t.Errorf("Workflow = %q, want %q", meta.Workflow, "Release")
+	}
+	if meta.Actor != "monalisa" {
+		t.Errorf("Actor = %q, want %q", meta.Actor, "monalisa")
 	}
 }
 
@@ -230,14 +246,51 @@ func TestParseWorkerLog_Rerun(t *testing.T) {
 		t.Fatalf("read fixture: %v", err)
 	}
 	meta := ParseWorkerLog(string(content))
-	if meta.Repo != "myorg/myapp" {
-		t.Errorf("Repo = %q, want %q", meta.Repo, "myorg/myapp")
+	if meta.Repo != "octocat/hello-world" {
+		t.Errorf("Repo = %q, want %q", meta.Repo, "octocat/hello-world")
 	}
 	if meta.JobName != "build-docker-image" {
 		t.Errorf("JobName = %q, want %q", meta.JobName, "build-docker-image")
 	}
-	if meta.RunID != "8675312" {
-		t.Errorf("RunID = %q, want %q", meta.RunID, "8675312")
+	if meta.RunID != "9000000004" {
+		t.Errorf("RunID = %q, want %q", meta.RunID, "9000000004")
+	}
+}
+
+func TestParseWorkerLog_OldFormat(t *testing.T) {
+	// Runner < 2.333.1: metadata is a flat JSON object on a single log line.
+	content, err := os.ReadFile(filepath.Join("..", "..", "test", "Worker_old_format.log"))
+	if err != nil {
+		t.Fatalf("read fixture: %v", err)
+	}
+	meta := ParseWorkerLog(string(content))
+	if meta.Repo != "octocat/hello-world" {
+		t.Errorf("Repo = %q, want %q", meta.Repo, "octocat/hello-world")
+	}
+	if meta.Workflow != "Legacy Build" {
+		t.Errorf("Workflow = %q, want %q", meta.Workflow, "Legacy Build")
+	}
+	if meta.RunID != "9000000005" {
+		t.Errorf("RunID = %q, want %q", meta.RunID, "9000000005")
+	}
+	if meta.Actor != "monalisa" {
+		t.Errorf("Actor = %q, want %q", meta.Actor, "monalisa")
+	}
+	if meta.JobName != "package" {
+		t.Errorf("JobName = %q, want %q", meta.JobName, "package")
+	}
+}
+
+func TestParseWorkerLog_CancelledEarly(t *testing.T) {
+	// Worker process killed before "Job message:" section was written.
+	// ParseWorkerLog must return an empty WorkerMeta without panicking.
+	content, err := os.ReadFile(filepath.Join("..", "..", "test", "Worker_cancelled_early.log"))
+	if err != nil {
+		t.Fatalf("read fixture: %v", err)
+	}
+	meta := ParseWorkerLog(string(content))
+	if meta.Repo != "" || meta.Workflow != "" || meta.Actor != "" || meta.JobName != "" {
+		t.Errorf("expected empty WorkerMeta for truncated log, got %+v", meta)
 	}
 }
 
@@ -306,6 +359,34 @@ func TestParseLine_TypicalLogFile(t *testing.T) {
 		}
 	}
 
+	if len(got) != len(wantSequence) {
+		t.Fatalf("parsed %d events, want %d; events: %v", len(got), len(wantSequence), got)
+	}
+	for i := range got {
+		if got[i] != wantSequence[i] {
+			t.Errorf("event[%d] = %v, want %v", i, got[i], wantSequence[i])
+		}
+	}
+}
+
+func TestParseLine_OldFormatLogFile(t *testing.T) {
+	// Runner < 2.333.1: no "WRITE LINE:" prefix; component names differ (Runner.Listener, JobDispatcher).
+	content, err := os.ReadFile(filepath.Join("..", "..", "test", "Runner_old_format.log"))
+	if err != nil {
+		t.Fatalf("read fixture: %v", err)
+	}
+	wantSequence := []EventKind{
+		EventOnline,
+		EventJobStarted,
+		EventJobCompleted,
+		EventOnline,
+	}
+	var got []EventKind
+	for _, line := range splitLines(string(content)) {
+		if ev, ok := ParseLine(line); ok {
+			got = append(got, ev.Kind)
+		}
+	}
 	if len(got) != len(wantSequence) {
 		t.Fatalf("parsed %d events, want %d; events: %v", len(got), len(wantSequence), got)
 	}

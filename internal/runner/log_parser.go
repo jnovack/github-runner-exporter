@@ -24,7 +24,7 @@ type Event struct {
 	Kind      EventKind
 	Timestamp time.Time
 	JobName   string // EventJobStarted, EventJobCompleted
-	Result    string // EventJobCompleted: "succeeded", "failed", "cancelled"
+	Result    string // EventJobCompleted: "succeeded", "failed", "canceled"
 }
 
 // WorkerMeta holds job metadata extracted from a Worker_*.log file.
@@ -85,6 +85,11 @@ func ParseLine(line string) (Event, bool) {
 		}
 		jobName := rest[:idx]
 		result := strings.ToLower(rest[idx+len(" completed with result: "):])
+		// Normalize British "cancelled" to US "canceled" — GitHub Actions runners
+		// emit "Canceled" (one l) but some older runners/fixtures use "Cancelled".
+		if result == "cancelled" {
+			result = "canceled"
+		}
 		return Event{Kind: EventJobCompleted, Timestamp: ts, JobName: jobName, Result: result}, true
 	}
 

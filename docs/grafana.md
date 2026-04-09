@@ -75,7 +75,7 @@ Designed for on-call / ops use. Key panels:
 
 Designed for developers and platform engineers. Key panels:
 
-- **Job Volume Over Time** — rate of jobs stacked by status (succeeded/failed/cancelled)
+- **Job Volume Over Time** — rate of jobs stacked by status (succeeded/failed/canceled)
 - **Success Rate** — overall % over time
 - **Top Repos / Workflows** — bar charts of job counts over the last 24h
 - **p50 / p95 / p99 Duration by Workflow** — time series from histogram

@@ -1,0 +1,12 @@
+[2024-03-15 07:00:01Z INFO HostContext] Well known directory 'Bin': '/actions-runner/bin.2.312.0'
+[2024-03-15 07:00:01Z INFO Worker] Version: 2.312.0
+[2024-03-15 07:00:01Z INFO Worker] Commit: abc123def456abc123def456abc123def456abc123
+[2024-03-15 07:00:02Z INFO Worker] Waiting to receive the job message from the channel.
+[2024-03-15 07:00:02Z INFO Worker] Message received.
+[2024-03-15 07:00:02Z INFO Worker] {"repository":"octocat/hello-world","workflow_name":"Legacy Build","run_id":"9000000005","actor":"monalisa","job_name":"package"}
+[2024-03-15 07:00:03Z INFO Worker] Operating System: Ubuntu 20.04.6 LTS
+[2024-03-15 07:00:04Z INFO StepsRunner] Running job: package
+[2024-03-15 07:00:05Z INFO Worker] ##[group]Package artifacts
+[2024-03-15 07:01:29Z INFO Worker] Archive created: dist/hello-world-1.0.0.tar.gz
+[2024-03-15 07:01:30Z INFO Worker] ##[endgroup]
+[2024-03-15 07:01:31Z INFO JobRunner] Job result after all job steps finish: Succeeded

@@ -13,15 +13,39 @@
       "d": [
         {
           "k": "repository",
-          "v": "myorg/myapp"
+          "v": "octocat/hello-world"
+        },
+        {
+          "k": "repository_owner",
+          "v": "octocat"
+        },
+        {
+          "k": "repository_owner_id",
+          "v": "583231"
+        },
+        {
+          "k": "repositoryUrl",
+          "v": "git://github.com/octocat/hello-world.git"
         },
         {
           "k": "run_id",
-          "v": "8675309"
+          "v": "9000000001"
+        },
+        {
+          "k": "run_number",
+          "v": "42"
+        },
+        {
+          "k": "run_attempt",
+          "v": "1"
+        },
+        {
+          "k": "actor_id",
+          "v": "1"
         },
         {
           "k": "actor",
-          "v": "jnovack"
+          "v": "monalisa"
         },
         {
           "k": "workflow",
@@ -32,4 +56,13 @@
   }
 }
 [2024-03-15 08:05:12Z INFO Worker] Operating System: Ubuntu 22.04.3 LTS
-[2024-03-15 08:07:44Z INFO Worker] Job succeeded
+[2024-03-15 08:05:12Z INFO StepsRunner] Running job: build
+[2024-03-15 08:05:13Z INFO Worker] Starting: Set up job
+[2024-03-15 08:05:14Z INFO Worker] ##[group]Run actions/checkout@v4
+[2024-03-15 08:05:15Z INFO Worker] Syncing repository: octocat/hello-world
+[2024-03-15 08:05:16Z INFO Worker] ##[endgroup]
+[2024-03-15 08:05:17Z INFO Worker] ##[group]Build
+[2024-03-15 08:06:30Z INFO Worker] Successfully built target
+[2024-03-15 08:07:44Z INFO Worker] ##[endgroup]
+[2024-03-15 08:07:44Z INFO Worker] Post job cleanup.
+[2024-03-15 08:07:45Z INFO JobRunner] Job result after all job steps finish: Succeeded

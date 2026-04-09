@@ -16,7 +16,7 @@ const (
 	StateBusy
 )
 
-var completionStatuses = []string{"succeeded", "failed", "cancelled"}
+var completionStatuses = []string{"succeeded", "failed", "canceled"}
 
 func (s State) String() string {
 	switch s {
@@ -270,6 +270,21 @@ func (t *Tracker) preseedCurrentStatusSeries() {
 	actor := orUnknown(t.current.Actor)
 	for _, status := range completionStatuses {
 		t.jobsTotal.WithLabelValues(t.current.RunnerName, repo, workflow, jobName, actor, status).Add(0)
+	}
+}
+
+// PreseedJobLabels initializes zero-value counter series for the given label combination
+// across all terminal statuses. Called during startup to restore label cardinality from
+// historical Worker logs so series survive across exporter restarts without gaps.
+func (t *Tracker) PreseedJobLabels(repo, workflow, jobName, actor string) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	r := orUnknown(repo)
+	w := orUnknown(workflow)
+	j := orUnknown(jobName)
+	a := orUnknown(actor)
+	for _, status := range completionStatuses {
+		t.jobsTotal.WithLabelValues(t.runnerName, r, w, j, a, status).Add(0)
 	}
 }
 

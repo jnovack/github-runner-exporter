@@ -1,9 +1,9 @@
-[2024-03-15 09:00:01Z INFO HostContext] Well known directory 'Bin': '/actions-runner/bin.2.333.1'
-[2024-03-15 09:00:01Z INFO Worker] Version: 2.333.1
-[2024-03-15 09:00:01Z INFO Worker] Commit: 6792966801e8925346735b68c03bf9f347af4646
-[2024-03-15 09:00:01Z INFO Worker] Waiting to receive the job message from the channel.
-[2024-03-15 09:00:01Z INFO Worker] Message received.
-[2024-03-15 09:00:01Z INFO Worker] Job message:
+[2024-03-15 09:00:00Z INFO HostContext] Well known directory 'Bin': '/actions-runner/bin.2.333.1'
+[2024-03-15 09:00:00Z INFO Worker] Version: 2.333.1
+[2024-03-15 09:00:00Z INFO Worker] Commit: 6792966801e8925346735b68c03bf9f347af4646
+[2024-03-15 09:00:00Z INFO Worker] Waiting to receive the job message from the channel.
+[2024-03-15 09:00:00Z INFO Worker] Message received.
+[2024-03-15 09:00:00Z INFO Worker] Job message:
  {
   "jobDisplayName": "deploy",
   "jobId": "a1b2c3d4-0000-0000-0000-000000000003",
@@ -13,24 +13,56 @@
       "d": [
         {
           "k": "repository",
-          "v": "myorg/myapp"
+          "v": "octocat/hello-world"
+        },
+        {
+          "k": "repository_owner",
+          "v": "octocat"
+        },
+        {
+          "k": "repository_owner_id",
+          "v": "583231"
+        },
+        {
+          "k": "repositoryUrl",
+          "v": "git://github.com/octocat/hello-world.git"
         },
         {
           "k": "run_id",
-          "v": "8675311"
+          "v": "9000000003"
+        },
+        {
+          "k": "run_number",
+          "v": "7"
+        },
+        {
+          "k": "run_attempt",
+          "v": "1"
+        },
+        {
+          "k": "actor_id",
+          "v": "1"
         },
         {
           "k": "actor",
-          "v": "jnovack"
+          "v": "monalisa"
         },
         {
           "k": "workflow",
-          "v": "CD"
+          "v": "Release"
         }
       ]
     }
   }
 }
 [2024-03-15 09:00:02Z INFO Worker] Operating System: Ubuntu 22.04.3 LTS
-[2024-03-15 09:03:11Z WARNING Worker] ##[warning]The operation was cancelled.
-[2024-03-15 09:03:11Z INFO Worker] Job cancelled
+[2024-03-15 09:00:02Z INFO StepsRunner] Running job: deploy
+[2024-03-15 09:00:03Z INFO Worker] Starting: Set up job
+[2024-03-15 09:00:04Z INFO Worker] ##[group]Run actions/checkout@v4
+[2024-03-15 09:00:05Z INFO Worker] Syncing repository: octocat/hello-world
+[2024-03-15 09:00:06Z INFO Worker] ##[endgroup]
+[2024-03-15 09:00:07Z INFO Worker] ##[group]Deploy to production
+[2024-03-15 09:03:05Z WARNING Worker] ##[warning]The operation was canceled.
+[2024-03-15 09:03:10Z INFO Worker] ##[endgroup]
+[2024-03-15 09:03:11Z INFO Worker] Post job cleanup.
+[2024-03-15 09:03:11Z INFO JobRunner] Job result after all job steps finish: Canceled
