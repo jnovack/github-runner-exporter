@@ -354,7 +354,13 @@
         }
       ],
       "transformations": [
-        { "id": "cumulativeSum", "options": {} }
+        {
+          "id": "calculateField",
+          "options": {
+            "mode": "cumulativeFunctions",
+            "reduce": { "reducer": "sum" }
+          }
+        }
       ],
       "title": "Jobs Completed by Status",
       "type": "timeseries"
@@ -422,7 +428,7 @@
         "orientation": "horizontal",
         "legend": { "displayMode": "hidden" },
         "tooltip": { "mode": "single" },
-        "xField": "Value"
+        "xField": "repo"
       },
       "targets": [
         {
@@ -430,7 +436,8 @@
           "expr": "sort_desc(sum by(repo)(increase(github_runner_jobs_total{instance=~\"$runner\", actor=~\"$actor\"}[$__range])))",
           "legendFormat": "{{repo}}",
           "refId": "A",
-          "instant": true
+          "instant": true,
+          "format": "table"
         }
       ],
       "title": "Top Repos by Job Count",
@@ -450,7 +457,7 @@
         "orientation": "horizontal",
         "legend": { "displayMode": "hidden" },
         "tooltip": { "mode": "single" },
-        "xField": "Value"
+        "xField": "actor"
       },
       "targets": [
         {
@@ -458,7 +465,8 @@
           "expr": "sort_desc(sum by(actor)(increase(github_runner_jobs_total{instance=~\"$runner\", repo=~\"$repo\", workflow=~\"$workflow\"}[$__range])))",
           "legendFormat": "{{actor}}",
           "refId": "A",
-          "instant": true
+          "instant": true,
+          "format": "table"
         }
       ],
       "title": "Top Actors by Job Count",
@@ -478,7 +486,7 @@
         "orientation": "horizontal",
         "legend": { "displayMode": "hidden" },
         "tooltip": { "mode": "single" },
-        "xField": "Value"
+        "xField": "repo"
       },
       "targets": [
         {
@@ -486,7 +494,8 @@
           "expr": "sort_desc(sum by(repo)(increase(github_runner_jobs_total{instance=~\"$runner\", status=\"failed\"}[$__range])))",
           "legendFormat": "{{repo}}",
           "refId": "A",
-          "instant": true
+          "instant": true,
+          "format": "table"
         }
       ],
       "title": "Top Repos by Failure Count",
@@ -513,7 +522,7 @@
         "orientation": "horizontal",
         "legend": { "displayMode": "hidden" },
         "tooltip": { "mode": "single" },
-        "xField": "Value"
+        "xField": "actor"
       },
       "targets": [
         {
@@ -521,7 +530,8 @@
           "expr": "sort_desc(sum by(actor)(increase(github_runner_job_duration_seconds_sum{instance=~\"$runner\"}[$__range])))",
           "legendFormat": "{{actor}}",
           "refId": "A",
-          "instant": true
+          "instant": true,
+          "format": "table"
         }
       ],
       "title": "Runner Seconds by Actor",
@@ -541,7 +551,7 @@
         "orientation": "horizontal",
         "legend": { "displayMode": "hidden" },
         "tooltip": { "mode": "single" },
-        "xField": "Value"
+        "xField": "workflow"
       },
       "targets": [
         {
@@ -549,7 +559,8 @@
           "expr": "sort_desc(sum by(workflow)(increase(github_runner_jobs_total{instance=~\"$runner\", repo=~\"$repo\", actor=~\"$actor\"}[$__range])))",
           "legendFormat": "{{workflow}}",
           "refId": "A",
-          "instant": true
+          "instant": true,
+          "format": "table"
         }
       ],
       "title": "Jobs by Workflow",
