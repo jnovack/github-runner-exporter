@@ -487,7 +487,7 @@
     {
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "fieldConfig": {
-        "defaults": { "unit": "short", "custom": { "stacking": { "mode": "normal" } } }
+        "defaults": { "unit": "short", "custom": { "stacking": { "mode": "normal" } }, "noValue": "0" }
       },
       "gridPos": { "h": 8, "w": 8, "x": 16, "y": 42 },
       "id": 53,
