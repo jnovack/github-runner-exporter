@@ -406,11 +406,11 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "expr": "(node_filesystem_avail_bytes{instance=~\"$runner\", mountpoint=\"/\"} / node_filesystem_size_bytes{instance=~\"$runner\",  mountpoint=\"/\"})",
+          "expr": "1 - (node_filesystem_avail_bytes{instance=~\"$runner\", mountpoint=\"/\"} / node_filesystem_size_bytes{instance=~\"$runner\",  mountpoint=\"/\"})",
           "legendFormat": "{{instance}}"
         }
       ],
-      "title": "Disk Free % on /",
+      "title": "Disk Used % on /",
       "type": "timeseries"
     }
   ]
