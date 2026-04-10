@@ -20,11 +20,11 @@ import (
 //
 // It sends parsed Events and WorkerMeta values to the provided Tracker.
 type Watcher struct {
-	diagDir        string
-	tracker        *Tracker
-	poll           time.Duration   // fallback poll interval when fsnotify misses events
-	walkWindow     time.Duration   // how far back to scan Worker logs on startup; 0 = unlimited
-	harvestedLogs  map[string]bool // Worker log paths where full metadata was obtained
+	diagDir       string
+	tracker       *Tracker
+	poll          time.Duration   // fallback poll interval when fsnotify misses events
+	walkWindow    time.Duration   // how far back to scan Worker logs on startup; 0 = unlimited
+	harvestedLogs map[string]bool // Worker log paths where full metadata was obtained
 }
 
 // NewWatcher creates a Watcher for the given _diag directory.
@@ -184,9 +184,10 @@ func (w *Watcher) readWorkerLog(path string) {
 		return
 	}
 	meta := ParseWorkerLog(string(data))
-	if meta.Repo != "" || meta.JobName != "" {
+	if meta.Repo != "" || meta.JobName != "" || !meta.StartedAt.IsZero() || !meta.EndedAt.IsZero() {
 		w.tracker.SetWorkerMeta(meta)
-		if meta.Repo != "" && meta.Workflow != "" && meta.RunID != "" && meta.Actor != "" && meta.JobName != "" {
+		if meta.Repo != "" && meta.Workflow != "" && meta.RunID != "" && meta.Actor != "" && meta.JobName != "" &&
+			!meta.StartedAt.IsZero() && !meta.EndedAt.IsZero() {
 			w.harvestedLogs[path] = true
 		}
 	}
@@ -269,7 +270,7 @@ func WalkExistingWorkerLogs(diagDir string, tracker *Tracker, walkWindow time.Du
 			return nil
 		}
 		meta := ParseWorkerLog(string(data))
-		if meta.Repo != "" || meta.JobName != "" {
+		if meta.Repo != "" || meta.JobName != "" || !meta.StartedAt.IsZero() || !meta.EndedAt.IsZero() {
 			tracker.SetWorkerMeta(meta)
 		}
 		if meta.Repo != "" && meta.Workflow != "" && meta.Actor != "" && meta.JobName != "" {

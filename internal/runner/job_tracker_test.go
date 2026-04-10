@@ -178,6 +178,36 @@ func TestTracker_CompletionWithoutStart(t *testing.T) {
 	}
 }
 
+func TestTracker_CompletionWithoutStart_UsesWorkerTiming(t *testing.T) {
+	tr := newTestTracker(t)
+	tr.SetWorkerMeta(WorkerMeta{
+		Repo:      "org/app",
+		Workflow:  "CI",
+		Actor:     "alice",
+		JobName:   "validate",
+		StartedAt: ts("2024-03-15 08:05:10"),
+		EndedAt:   ts("2024-03-15 08:07:45"),
+	})
+
+	tr.HandleEvent(Event{
+		Kind:      EventJobCompleted,
+		JobName:   "validate",
+		Result:    "failed",
+		Timestamp: ts("2024-03-15 08:07:45"),
+	})
+
+	snap := tr.Snapshot()
+	if snap.Last == nil {
+		t.Fatal("last should be set for orphaned completion")
+	}
+	if snap.Last.Duration <= 0 {
+		t.Fatalf("last.Duration = %v, want > 0", snap.Last.Duration)
+	}
+	if snap.Last.Duration != 155*time.Second {
+		t.Fatalf("last.Duration = %v, want 155s", snap.Last.Duration)
+	}
+}
+
 // TestTracker_ReplayModeSkipsCounters verifies that jobs processed during replay
 // do not populate counters or histograms (metadata is not yet available during replay).
 func TestTracker_ReplayModeSkipsCounters(t *testing.T) {

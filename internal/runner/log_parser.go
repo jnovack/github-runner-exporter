@@ -29,11 +29,13 @@ type Event struct {
 
 // WorkerMeta holds job metadata extracted from a Worker_*.log file.
 type WorkerMeta struct {
-	Repo     string `json:"repository"`
-	Workflow string `json:"workflow_name"`
-	RunID    string `json:"run_id"`
-	Actor    string `json:"actor"`
-	JobName  string `json:"job_name"`
+	Repo      string `json:"repository"`
+	Workflow  string `json:"workflow_name"`
+	RunID     string `json:"run_id"`
+	Actor     string `json:"actor"`
+	JobName   string `json:"job_name"`
+	StartedAt time.Time
+	EndedAt   time.Time
 }
 
 // logLineRe matches the standard runner log format:
@@ -75,6 +77,12 @@ func ParseLine(line string) (Event, bool) {
 	case strings.HasPrefix(msg, "Running job: "):
 		jobName := strings.TrimPrefix(msg, "Running job: ")
 		return Event{Kind: EventJobStarted, Timestamp: ts, JobName: jobName}, true
+
+	case strings.HasPrefix(msg, "Job request ") && strings.Contains(msg, " received."):
+		// Fallback for cases where "Running job: ..." is missed due log tail timing.
+		// Example:
+		// "Job request 0 for plan <plan> job <id> received."
+		return Event{Kind: EventJobStarted, Timestamp: ts}, true
 
 	case strings.HasPrefix(msg, "Job ") && strings.Contains(msg, " completed with result: "):
 		// "Job <name> completed with result: Succeeded"
@@ -178,6 +186,20 @@ func ParseWorkerLog(content string) WorkerMeta {
 				meta.JobName = v
 			}
 		}
+		if meta.StartedAt.IsZero() {
+			if v := extractJSONStringField(trimmed, "startTime"); v != "" {
+				if ts, ok := parseWorkerTimestamp(v); ok {
+					meta.StartedAt = ts
+				}
+			}
+		}
+		if meta.EndedAt.IsZero() {
+			if v := extractJSONStringField(trimmed, "finishTime"); v != "" {
+				if ts, ok := parseWorkerTimestamp(v); ok {
+					meta.EndedAt = ts
+				}
+			}
+		}
 
 		// New format: {"k": "key"} on one line, {"v": "value"} on the next.
 		if trimmed == "{" {
@@ -208,12 +230,21 @@ func ParseWorkerLog(content string) WorkerMeta {
 			}
 		}
 
-		if meta.Repo != "" && meta.Workflow != "" && meta.RunID != "" && meta.Actor != "" && meta.JobName != "" {
+		if meta.Repo != "" && meta.Workflow != "" && meta.RunID != "" && meta.Actor != "" && meta.JobName != "" &&
+			!meta.StartedAt.IsZero() && !meta.EndedAt.IsZero() {
 			break
 		}
 	}
 
 	return meta
+}
+
+func parseWorkerTimestamp(s string) (time.Time, bool) {
+	ts, err := time.Parse(time.RFC3339Nano, s)
+	if err != nil {
+		return time.Time{}, false
+	}
+	return ts.UTC(), true
 }
 
 // extractJSONStringField returns the string value for the given key in a JSON line fragment.

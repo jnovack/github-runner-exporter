@@ -62,9 +62,9 @@ type Tracker struct {
 	liveMode bool
 
 	// Prometheus instruments — registered once, observed per job.
-	jobsTotal                *prometheus.CounterVec
-	jobsByRunnerStatusTotal  *prometheus.CounterVec
-	jobDuration              *prometheus.HistogramVec
+	jobsTotal               *prometheus.CounterVec
+	jobsByRunnerStatusTotal *prometheus.CounterVec
+	jobDuration             *prometheus.HistogramVec
 }
 
 // NewTracker creates a Tracker and registers its Prometheus instruments with reg.
@@ -121,10 +121,20 @@ func (t *Tracker) HandleEvent(ev Event) {
 
 	case EventJobStarted:
 		t.state = StateBusy
-		t.current = &JobInfo{
-			RunnerName: t.runnerName,
-			JobName:    ev.JobName,
-			StartedAt:  ev.Timestamp,
+		if t.current == nil {
+			t.current = &JobInfo{
+				RunnerName: t.runnerName,
+				JobName:    ev.JobName,
+				StartedAt:  ev.Timestamp,
+			}
+		} else {
+			// Merge duplicate start signals (e.g. JobDispatcher fallback + Running job).
+			if t.current.StartedAt.IsZero() || (!ev.Timestamp.IsZero() && ev.Timestamp.Before(t.current.StartedAt)) {
+				t.current.StartedAt = ev.Timestamp
+			}
+			if ev.JobName != "" {
+				t.current.JobName = ev.JobName
+			}
 		}
 		t.applyPendingMeta()
 		if t.liveMode {
@@ -137,15 +147,22 @@ func (t *Tracker) HandleEvent(ev Event) {
 			t.current = &JobInfo{
 				RunnerName: t.runnerName,
 				JobName:    ev.JobName,
-				StartedAt:  ev.Timestamp,
 			}
 		}
 		t.applyPendingMeta()
 
 		t.current.Status = ev.Result
-		t.current.EndedAt = ev.Timestamp
-		if !t.current.StartedAt.IsZero() {
+		if t.current.EndedAt.IsZero() || ev.Timestamp.After(t.current.EndedAt) {
+			t.current.EndedAt = ev.Timestamp
+		}
+		if t.current.StartedAt.IsZero() {
+			t.current.StartedAt = t.current.EndedAt
+		}
+		if !t.current.StartedAt.IsZero() && !t.current.EndedAt.IsZero() {
 			t.current.Duration = t.current.EndedAt.Sub(t.current.StartedAt)
+			if t.current.Duration < 0 {
+				t.current.Duration = 0
+			}
 		}
 
 		t.last = t.current
@@ -234,6 +251,12 @@ func (t *Tracker) applyPendingMeta() {
 	}
 	if m.Actor != "" {
 		t.current.Actor = m.Actor
+	}
+	if !m.StartedAt.IsZero() && (t.current.StartedAt.IsZero() || m.StartedAt.Before(t.current.StartedAt)) {
+		t.current.StartedAt = m.StartedAt
+	}
+	if !m.EndedAt.IsZero() && (t.current.EndedAt.IsZero() || m.EndedAt.After(t.current.EndedAt)) {
+		t.current.EndedAt = m.EndedAt
 	}
 	// JobName from meta overrides the name parsed from the Runner log
 	// only when the Runner log produced an empty name.

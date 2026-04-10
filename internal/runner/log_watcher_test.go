@@ -402,6 +402,7 @@ func TestHandleFSEvent_NewWorkerLog(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read fixture: %v", err)
 	}
+	content = append(content, []byte("\n\"startTime\": \"2026-04-01T04:23:24.6296643Z\"\n\"finishTime\": \"2026-04-01T04:23:26.9329977Z\"\n")...)
 	workerPath := filepath.Join(dir, "Worker_20240315-080510-utc.log")
 	if err := os.WriteFile(workerPath, content, 0600); err != nil {
 		t.Fatal(err)
@@ -433,6 +434,7 @@ func TestHandleFSEvent_WorkerLog_WriteEvent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read fixture: %v", err)
 	}
+	content = append(content, []byte("\n\"startTime\": \"2026-04-01T04:23:24.6296643Z\"\n\"finishTime\": \"2026-04-01T04:23:26.9329977Z\"\n")...)
 	workerPath := filepath.Join(dir, "Worker_20240315-080510-utc.log")
 
 	// Simulate a Create event with only the first line written (no metadata yet).
@@ -462,9 +464,9 @@ func TestHandleFSEvent_WorkerLog_WriteEvent(t *testing.T) {
 	}
 }
 
-// TestHandleFSEvent_WorkerLog_HarvestedSkipsReread verifies that once a Worker
-// log has been fully harvested, subsequent Write events are skipped.
-func TestHandleFSEvent_WorkerLog_HarvestedSkipsReread(t *testing.T) {
+// TestHandleFSEvent_WorkerLog_HarvestingWaitsForTiming verifies harvesting waits
+// until timing fields are present and then marks the file as harvested.
+func TestHandleFSEvent_WorkerLog_HarvestingWaitsForTiming(t *testing.T) {
 	dir := t.TempDir()
 	tracker := newTestTrackerFor(t, "runner")
 	w := NewWatcher(dir, tracker)
@@ -481,19 +483,21 @@ func TestHandleFSEvent_WorkerLog_HarvestedSkipsReread(t *testing.T) {
 	runnerLog := ""
 	var offset int64
 
-	// First Create event — should harvest the file and mark it as done.
+	// First Create event: metadata exists, but no timing fields yet.
 	w.handleFSEvent(fsnotify.Event{Name: workerPath, Op: fsnotify.Create}, &runnerLog, &offset)
-	if !w.harvestedLogs[workerPath] {
-		t.Fatal("expected workerPath to be marked as harvested after full metadata read")
+	if w.harvestedLogs[workerPath] {
+		t.Fatal("expected workerPath NOT to be harvested before timing fields are present")
 	}
 
-	// Remove the file to prove subsequent Write events do NOT re-read it.
-	if err := os.Remove(workerPath); err != nil {
+	// Simulate a later write that includes timing fields.
+	contentWithTiming := append(content, []byte("\n\"startTime\": \"2026-04-01T04:23:24.6296643Z\"\n\"finishTime\": \"2026-04-01T04:23:26.9329977Z\"\n")...)
+	if err := os.WriteFile(workerPath, contentWithTiming, 0600); err != nil {
 		t.Fatal(err)
 	}
-	// This would panic or error if readWorkerLog tried to open the deleted file.
 	w.handleFSEvent(fsnotify.Event{Name: workerPath, Op: fsnotify.Write}, &runnerLog, &offset)
-	// If we reach here without error, the harvested guard worked.
+	if !w.harvestedLogs[workerPath] {
+		t.Fatal("expected workerPath to be harvested once timing fields are present")
+	}
 }
 
 // TestWatcher_WindowsPaths verifies path construction uses filepath.Join (cross-platform).

@@ -33,6 +33,13 @@ func TestParseLine(t *testing.T) {
 			wantTime: time.Date(2024, 3, 15, 8, 5, 10, 0, time.UTC),
 		},
 		{
+			name:     "job dispatcher request received treated as start fallback",
+			line:     "[2026-04-09 13:01:50Z INFO JobDispatcher] Job request 0 for plan e6f2e18a-f6cf-472b-b888-07b5855d400b job 3efb7d06-7227-5246-b53d-1d9e62b30941 received.",
+			wantOK:   true,
+			wantKind: EventJobStarted,
+			wantTime: time.Date(2026, 4, 9, 13, 1, 50, 0, time.UTC),
+		},
+		{
 			name:       "job completed succeeded",
 			line:       "[2024-03-15 08:07:45Z INFO Terminal] WRITE LINE: 2024-03-15 08:07:45Z: Job build completed with result: Succeeded",
 			wantOK:     true,
@@ -330,6 +337,70 @@ func TestParseWorkerLog_CRLF(t *testing.T) {
 	meta := ParseWorkerLog(content)
 	if meta.Repo != "org/repo" {
 		t.Errorf("Repo = %q, want %q", meta.Repo, "org/repo")
+	}
+}
+
+func TestParseWorkerLog_ExtractsStartAndFinishTime(t *testing.T) {
+	content := `
+{
+  "startTime": "2026-04-01T04:23:24.6296643Z",
+  "finishTime": "2026-04-01T04:23:26.9329977Z",
+  "jobDisplayName": "validate"
+}`
+	meta := ParseWorkerLog(content)
+	if meta.StartedAt.IsZero() {
+		t.Fatal("StartedAt is zero, want parsed timestamp")
+	}
+	if meta.EndedAt.IsZero() {
+		t.Fatal("EndedAt is zero, want parsed timestamp")
+	}
+	if !meta.EndedAt.After(meta.StartedAt) {
+		t.Fatalf("EndedAt = %v, StartedAt = %v, want EndedAt after StartedAt", meta.EndedAt, meta.StartedAt)
+	}
+}
+
+func TestParseWorkerLog_DoesNotStopBeforeLateTimingFields(t *testing.T) {
+	content := `
+{
+  "jobDisplayName": "validate",
+  "contextData": {
+    "github": {
+      "t": 2,
+      "d": [
+        {
+          "k": "repository",
+          "v": "ticklemeozmo/mtg-bulk-import"
+        },
+        {
+          "k": "workflow",
+          "v": "Validate"
+        },
+        {
+          "k": "run_id",
+          "v": "12345"
+        },
+        {
+          "k": "actor",
+          "v": "jnovack"
+        }
+      ]
+    }
+  }
+}
+... lots of log lines ...
+{
+  "startTime": "2026-04-01T04:23:24.6296643Z",
+  "finishTime": "2026-04-01T04:23:26.9329977Z"
+}`
+	meta := ParseWorkerLog(content)
+	if meta.Repo == "" || meta.Workflow == "" || meta.RunID == "" || meta.Actor == "" || meta.JobName == "" {
+		t.Fatalf("expected full metadata, got %+v", meta)
+	}
+	if meta.StartedAt.IsZero() || meta.EndedAt.IsZero() {
+		t.Fatalf("expected timing fields, got StartedAt=%v EndedAt=%v", meta.StartedAt, meta.EndedAt)
+	}
+	if !meta.EndedAt.After(meta.StartedAt) {
+		t.Fatalf("EndedAt = %v, StartedAt = %v, want EndedAt after StartedAt", meta.EndedAt, meta.StartedAt)
 	}
 }
 
