@@ -99,7 +99,8 @@
         "refresh": 2,
         "sort": 1,
         "type": "query",
-        "label": "Runner"
+        "label": "Runner",
+        "allValue": ".*"
       },
       {
         "current": {},
@@ -210,7 +211,8 @@
                 "value": null
               }
             ]
-          }
+          },
+          "decimals": 0
         }
       },
       "gridPos": {
@@ -235,7 +237,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "sum(github_runner_jobs_total{instance=~\"$runner\", repo=~\"$repo\", workflow=~\"$workflow\", actor=~\"$actor\"})",
+          "expr": "sum(increase(github_runner_jobs_total{instance=~\"$runner\", repo=~\"$repo\", workflow=~\"$workflow\", actor=~\"$actor\"}[$__range]))",
           "legendFormat": "Total Jobs",
           "refId": "A",
           "instant": true
@@ -298,7 +300,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "sum(github_runner_jobs_total{instance=~\"$runner\", repo=~\"$repo\", workflow=~\"$workflow\", actor=~\"$actor\", status=\"succeeded\"}) / sum(github_runner_jobs_total{instance=~\"$runner\", repo=~\"$repo\", workflow=~\"$workflow\", actor=~\"$actor\"})",
+          "expr": "((sum(increase(github_runner_jobs_total{instance=~\"$runner\", repo=~\"$repo\", workflow=~\"$workflow\", actor=~\"$actor\", status=\"succeeded\"}[$__range])) or on() vector(0)) / clamp_min(sum(increase(github_runner_jobs_total{instance=~\"$runner\", repo=~\"$repo\", workflow=~\"$workflow\", actor=~\"$actor\"}[$__range])), 1)) and on() (sum(increase(github_runner_jobs_total{instance=~\"$runner\", repo=~\"$repo\", workflow=~\"$workflow\", actor=~\"$actor\"}[$__range])) > 0)",
           "legendFormat": "Success Rate",
           "refId": "A",
           "instant": true
@@ -351,7 +353,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "sum(github_runner_job_duration_seconds_sum{instance=~\"$runner\"})",
+          "expr": "sum(increase(github_runner_job_duration_seconds_sum{instance=~\"$runner\", repo=~\"$repo\", workflow=~\"$workflow\", actor=~\"$actor\"}[$__range]))",
           "legendFormat": "Total Run Seconds",
           "refId": "A",
           "instant": true
@@ -404,7 +406,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "histogram_quantile(0.50, sum by(le)(github_runner_job_duration_seconds_bucket{instance=~\"$runner\"}))",
+          "expr": "(histogram_quantile(0.50, sum by(le)(increase(github_runner_job_duration_seconds_bucket{instance=~\"$runner\", repo=~\"$repo\", workflow=~\"$workflow\", actor=~\"$actor\"}[$__range]))) and on() (sum(increase(github_runner_job_duration_seconds_count{instance=~\"$runner\", repo=~\"$repo\", workflow=~\"$workflow\", actor=~\"$actor\"}[$__range])) > 0)) or (sum(increase(github_runner_job_duration_seconds_sum{instance=~\"$runner\", repo=~\"$repo\", workflow=~\"$workflow\", actor=~\"$actor\"}[$__range])) / clamp_min(sum(increase(github_runner_job_duration_seconds_count{instance=~\"$runner\", repo=~\"$repo\", workflow=~\"$workflow\", actor=~\"$actor\"}[$__range])), 1))",
           "legendFormat": "p50",
           "refId": "A",
           "instant": true
@@ -457,7 +459,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "histogram_quantile(0.90, sum by(le)(github_runner_job_duration_seconds_bucket{instance=~\"$runner\"}))",
+          "expr": "(histogram_quantile(0.90, sum by(le)(increase(github_runner_job_duration_seconds_bucket{instance=~\"$runner\", repo=~\"$repo\", workflow=~\"$workflow\", actor=~\"$actor\"}[$__range]))) and on() (sum(increase(github_runner_job_duration_seconds_count{instance=~\"$runner\", repo=~\"$repo\", workflow=~\"$workflow\", actor=~\"$actor\"}[$__range])) > 0)) or (sum(increase(github_runner_job_duration_seconds_sum{instance=~\"$runner\", repo=~\"$repo\", workflow=~\"$workflow\", actor=~\"$actor\"}[$__range])) / clamp_min(sum(increase(github_runner_job_duration_seconds_count{instance=~\"$runner\", repo=~\"$repo\", workflow=~\"$workflow\", actor=~\"$actor\"}[$__range])), 1))",
           "legendFormat": "p90",
           "refId": "A",
           "instant": true
@@ -510,7 +512,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "histogram_quantile(0.95, sum by(le)(github_runner_job_duration_seconds_bucket{instance=~\"$runner\"}))",
+          "expr": "(histogram_quantile(0.95, sum by(le)(increase(github_runner_job_duration_seconds_bucket{instance=~\"$runner\", repo=~\"$repo\", workflow=~\"$workflow\", actor=~\"$actor\"}[$__range]))) and on() (sum(increase(github_runner_job_duration_seconds_count{instance=~\"$runner\", repo=~\"$repo\", workflow=~\"$workflow\", actor=~\"$actor\"}[$__range])) > 0)) or (sum(increase(github_runner_job_duration_seconds_sum{instance=~\"$runner\", repo=~\"$repo\", workflow=~\"$workflow\", actor=~\"$actor\"}[$__range])) / clamp_min(sum(increase(github_runner_job_duration_seconds_count{instance=~\"$runner\", repo=~\"$repo\", workflow=~\"$workflow\", actor=~\"$actor\"}[$__range])), 1))",
           "legendFormat": "p95",
           "refId": "A",
           "instant": true
@@ -1213,16 +1215,28 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "Value"
+              "options": "average duration"
             },
             "properties": [
               {
-                "id": "displayName",
-                "value": "p95 Duration"
-              },
-              {
                 "id": "unit",
                 "value": "s"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "count"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              },
+              {
+                "id": "decimals",
+                "value": 0
               }
             ]
           }
@@ -1252,15 +1266,53 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "sort_desc((histogram_quantile(0.95, sum by(repo, workflow, job_name, le)(github_runner_job_duration_seconds_bucket{instance=~\"$runner\", repo=~\"$repo\", workflow=~\"$workflow\", actor=~\"$actor\"}))) and on(repo, workflow, job_name) (sum by(repo, workflow, job_name)(github_runner_job_duration_seconds_count{instance=~\"$runner\", repo=~\"$repo\", workflow=~\"$workflow\", actor=~\"$actor\"}) > 0))",
+          "expr": "sort_desc((sum by(repo, workflow, job_name)(max_over_time(github_runner_job_duration_seconds_sum{instance=~\"$runner\"}[$__range])) / clamp_min(sum by(repo, workflow, job_name)(max_over_time(github_runner_job_duration_seconds_count{instance=~\"$runner\"}[$__range])), 1)) and on(repo, workflow, job_name) (sum by(repo, workflow, job_name)(max_over_time(github_runner_job_duration_seconds_count{instance=~\"$runner\"}[$__range])) > 0))",
           "legendFormat": "",
           "refId": "A",
+          "instant": true,
+          "format": "table"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "expr": "sum by(repo, workflow, job_name)(max_over_time(github_runner_job_duration_seconds_count{instance=~\"$runner\"}[$__range]))",
+          "legendFormat": "",
+          "refId": "B",
           "instant": true,
           "format": "table"
         }
       ],
       "title": "Slowest Jobs (p95)",
-      "type": "table"
+      "type": "table",
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "instance": true,
+              "le": true
+            },
+            "indexByName": {
+              "repo": 0,
+              "workflow": 1,
+              "job_name": 2,
+              "Value #A": 3,
+              "Value #B": 4
+            },
+            "renameByName": {
+              "Value #A": "average duration",
+              "Value #B": "count"
+            }
+          }
+        }
+      ]
     }
   ]
 }
