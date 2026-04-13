@@ -7,6 +7,8 @@ import (
 	"time"
 )
 
+// ─── Event Types ─────────────────────────────────────────────────────────────
+
 // EventKind identifies what type of runner event a log line represents.
 type EventKind int
 
@@ -38,12 +40,16 @@ type WorkerMeta struct {
 	EndedAt   time.Time
 }
 
+// ─── Runner Log Parsing ──────────────────────────────────────────────────────
+
 // logLineRe matches the standard runner log format:
 // [YYYY-MM-DD HH:MM:SSZ LEVEL Component] message
 var logLineRe = regexp.MustCompile(
 	`^\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})Z[^\]]*\]\s+(.+)$`,
 )
 
+// logTimeLayout is the time format used in Runner diagnostic log timestamps,
+// matching the "[YYYY-MM-DD HH:MM:SS Z ...]" header produced by the runner.
 const logTimeLayout = "2006-01-02 15:04:05"
 
 // ParseLine parses a single Runner_*.log line into an Event.
@@ -123,6 +129,10 @@ func normalizeWriteLineMessage(msg string) string {
 	return rest
 }
 
+// isRunnerConsoleTimestamp reports whether s looks like a runner console
+// timestamp — one of the ISO 8601 / RFC 3339 variants that the GitHub Actions
+// runner prepends to console output lines in the WRITE LINE format used by
+// runner ≥ 2.333.
 func isRunnerConsoleTimestamp(s string) bool {
 	layouts := []string{
 		"2006-01-02 15:04:05Z",
@@ -138,6 +148,8 @@ func isRunnerConsoleTimestamp(s string) bool {
 	}
 	return false
 }
+
+// ─── Worker Log Parsing ──────────────────────────────────────────────────────
 
 // ParseWorkerLog scans all lines in a Worker_*.log file content for job metadata.
 // It handles two formats:
@@ -239,6 +251,9 @@ func ParseWorkerLog(content string) WorkerMeta {
 	return meta
 }
 
+// parseWorkerTimestamp parses an RFC 3339 nanosecond-precision timestamp from
+// a Worker log field (e.g. startTime, finishTime) and normalises it to UTC.
+// Returns (time.Time{}, false) if s does not match RFC 3339Nano.
 func parseWorkerTimestamp(s string) (time.Time, bool) {
 	ts, err := time.Parse(time.RFC3339Nano, s)
 	if err != nil {
@@ -246,6 +261,8 @@ func parseWorkerTimestamp(s string) (time.Time, bool) {
 	}
 	return ts.UTC(), true
 }
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 // extractJSONStringField returns the string value for the given key in a JSON line fragment.
 // Handles both `"key": "value"` and `"key": "value",` forms.

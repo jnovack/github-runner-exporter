@@ -25,6 +25,10 @@ var (
 	revision     = "local"
 )
 
+// defaultVersion, defaultBuildRFC3339, and defaultRevision are the sentinel
+// values embedded in the binary when no -ldflags are supplied at build time.
+// populateBuildMetadataFromBuildInfo overwrites any field still at its
+// default using Go's embedded VCS build info.
 const (
 	defaultVersion      = "dev"
 	defaultBuildRFC3339 = "1970-01-01T00:00:00Z"
@@ -57,6 +61,10 @@ func populateBuildMetadataFromBuildInfo() {
 	}
 }
 
+// main is the binary entry point. It parses flags, loads the runner
+// configuration, constructs the Prometheus registry, starts the diagnostic
+// log watcher in a background goroutine, serves metrics over HTTP, and
+// performs a graceful shutdown when SIGINT or SIGTERM is received.
 func main() {
 	populateBuildMetadataFromBuildInfo()
 
@@ -158,6 +166,9 @@ func main() {
 	}
 }
 
+// setupLogging configures the default slog handler to emit JSON to stderr at
+// the requested verbosity level. Unknown level strings fall back to
+// slog.LevelInfo.
 func setupLogging(level string) {
 	var l slog.Level
 	switch level {

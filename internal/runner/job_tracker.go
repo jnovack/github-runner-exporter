@@ -7,17 +7,29 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-// State represents the current state of the runner.
+// ─── State ───────────────────────────────────────────────────────────────────
+
+// State represents the operational state of the runner as inferred from its
+// diagnostic logs.
 type State int
 
 const (
+	// StateOffline is the initial state. The runner has not yet logged
+	// "Listening for Jobs", or an unexpected shutdown has been detected.
 	StateOffline State = iota
+	// StateIdle indicates the runner is connected and waiting for a job.
 	StateIdle
+	// StateBusy indicates the runner is actively executing a job.
 	StateBusy
 )
 
+// completionStatuses lists every terminal job result recognised by the runner.
+// They are used to pre-seed Prometheus counter label series so that every
+// status appears in range queries even before a job of that type is observed.
 var completionStatuses = []string{"succeeded", "failed", "canceled"}
 
+// String returns the lowercase name of the state for use in log messages and
+// metric labels.
 func (s State) String() string {
 	switch s {
 	case StateIdle:
@@ -28,6 +40,8 @@ func (s State) String() string {
 		return "offline"
 	}
 }
+
+// ─── Job Info ────────────────────────────────────────────────────────────────
 
 // JobInfo holds the metadata and timing for a single job execution.
 type JobInfo struct {
@@ -42,6 +56,8 @@ type JobInfo struct {
 	EndedAt    time.Time
 	Duration   time.Duration
 }
+
+// ─── Tracker ─────────────────────────────────────────────────────────────────
 
 // Tracker maintains the runner's current state and Prometheus metrics.
 // It is safe for concurrent use.
@@ -106,6 +122,8 @@ func NewTracker(runnerName string, reg prometheus.Registerer) *Tracker {
 	}
 	return t
 }
+
+// ─── Event Handling ──────────────────────────────────────────────────────────
 
 // HandleEvent updates tracker state in response to a parsed runner log event.
 func (t *Tracker) HandleEvent(ev Event) {
@@ -187,6 +205,8 @@ func (t *Tracker) SetWorkerMeta(meta WorkerMeta) {
 	}
 }
 
+// ─── Replay / Live Mode ──────────────────────────────────────────────────────
+
 // EnterReplayMode disables counter/histogram recording. Call before replaying
 // historical log events so that jobs with incomplete metadata do not pollute
 // the metrics with permanent "unknown" label values.
@@ -232,6 +252,8 @@ func (t *Tracker) EnrichLastFromPendingMeta() {
 	}
 	t.pendingMeta = nil
 }
+
+// ─── Internal Helpers ────────────────────────────────────────────────────────
 
 // applyPendingMeta merges pendingMeta into current if both are non-nil.
 // Must be called with t.mu held.
@@ -311,8 +333,11 @@ func (t *Tracker) PreseedJobLabels(repo, workflow, jobName, actor string) {
 	}
 }
 
-// Snapshot returns a point-in-time copy of the tracker state for metric collection.
-// It is safe to call from any goroutine.
+// ─── Snapshot ────────────────────────────────────────────────────────────────
+
+// Snapshot is a point-in-time copy of the Tracker state, produced on every
+// Prometheus scrape. All fields are value types or shallow pointer copies;
+// modifying a Snapshot does not affect Tracker state.
 type Snapshot struct {
 	RunnerName string
 	State      State
@@ -320,6 +345,9 @@ type Snapshot struct {
 	Last       *JobInfo // nil if no job has completed yet
 }
 
+// Snapshot returns a consistent, point-in-time copy of the Tracker's state.
+// It acquires only a read lock and is safe to call concurrently with
+// HandleEvent and SetWorkerMeta.
 func (t *Tracker) Snapshot() Snapshot {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
@@ -339,6 +367,10 @@ func (t *Tracker) Snapshot() Snapshot {
 	return snap
 }
 
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+// orUnknown returns s if non-empty, or "unknown" as a Prometheus label
+// fallback when job metadata has not yet been populated from a Worker log.
 func orUnknown(s string) string {
 	if s == "" {
 		return "unknown"

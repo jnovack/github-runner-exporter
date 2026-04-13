@@ -5,7 +5,11 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+// namespace is the common metric name prefix shared by all github_runner_*
+// metrics produced by this exporter.
 const namespace = "github_runner"
+
+// ─── Collector ───────────────────────────────────────────────────────────────
 
 // Collector implements prometheus.Collector for runner state gauges.
 // Counter and histogram instruments live in the Tracker and are registered
@@ -152,6 +156,8 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 	}
 }
 
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
 // stateToGauges converts a runner.State into (online, busy) gauge values.
 func stateToGauges(s runner.State) (online, busy float64) {
 	switch s {
@@ -164,6 +170,8 @@ func stateToGauges(s runner.State) (online, busy float64) {
 	}
 }
 
+// orUnknown returns s if non-empty, or "unknown" as a Prometheus label
+// fallback when job metadata has not yet been populated from a Worker log.
 func orUnknown(s string) string {
 	if s == "" {
 		return "unknown"
