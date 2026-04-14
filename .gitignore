@@ -2,3 +2,4 @@ bin/
 reference/
 debug/
 .env
+scripts/local.mk
