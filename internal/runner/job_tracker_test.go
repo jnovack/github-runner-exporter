@@ -326,6 +326,36 @@ func TestTracker_LowCardStatusSeriesIncrementsOnCompletion(t *testing.T) {
 	}
 }
 
+// TestTracker_StaleWorkerMetaNotAppliedToNextJob reproduces the 9-hour duration
+// bug: a Worker log for job N arrives after job N completes. Its timestamps must
+// not be applied to job N+1, which would inflate N+1's duration by the idle gap.
+func TestTracker_StaleWorkerMetaNotAppliedToNextJob(t *testing.T) {
+	tr := newTestTracker(t)
+
+	// Job N: runs from 08:00 to 08:05.
+	tr.HandleEvent(Event{Kind: EventJobStarted, Timestamp: ts("2024-03-15 08:00:00"), JobName: "build"})
+	tr.HandleEvent(Event{Kind: EventJobCompleted, Timestamp: ts("2024-03-15 08:05:00"), JobName: "build", Result: "succeeded"})
+
+	// Job N's Worker log arrives late — after the job has already completed.
+	tr.SetWorkerMeta(WorkerMeta{
+		Repo: "org/app", Workflow: "CI", RunID: "1", Actor: "alice", JobName: "build",
+		StartedAt: ts("2024-03-15 08:00:00"),
+		EndedAt:   ts("2024-03-15 08:05:00"),
+	})
+
+	// Job N+1: starts 9 hours later and runs for 2 minutes.
+	tr.HandleEvent(Event{Kind: EventJobStarted, Timestamp: ts("2024-03-15 17:00:00"), JobName: "build"})
+	tr.HandleEvent(Event{Kind: EventJobCompleted, Timestamp: ts("2024-03-15 17:02:00"), JobName: "build", Result: "succeeded"})
+
+	snap := tr.Snapshot()
+	if snap.Last == nil {
+		t.Fatal("last is nil after second job")
+	}
+	if snap.Last.Duration != 2*time.Minute {
+		t.Errorf("job N+1 duration = %v, want 2m (stale Worker meta inflated it)", snap.Last.Duration)
+	}
+}
+
 // TestTracker_ConcurrentAccess verifies no data races under concurrent load.
 func TestTracker_ConcurrentAccess(t *testing.T) {
 	reg := prometheus.NewRegistry()

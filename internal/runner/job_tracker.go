@@ -262,6 +262,15 @@ func (t *Tracker) applyPendingMeta() {
 		return
 	}
 	m := t.pendingMeta
+	t.pendingMeta = nil
+
+	// If the Worker log's EndedAt predates the current job's StartedAt, the
+	// meta belongs to a previously-completed job that arrived late. Discard it
+	// entirely; the current job's own Worker log will arrive and be applied.
+	if !m.EndedAt.IsZero() && !t.current.StartedAt.IsZero() && m.EndedAt.Before(t.current.StartedAt) {
+		return
+	}
+
 	if m.Repo != "" {
 		t.current.Repo = m.Repo
 	}
@@ -285,7 +294,6 @@ func (t *Tracker) applyPendingMeta() {
 	if m.JobName != "" && t.current.JobName == "" {
 		t.current.JobName = m.JobName
 	}
-	t.pendingMeta = nil
 }
 
 // recordCompletion observes histogram and increments counter for a finished job.
