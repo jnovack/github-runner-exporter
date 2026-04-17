@@ -619,7 +619,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "sum by(status)(increase(github_runner_jobs_by_runner_status_total{instance=~\"$runner\"}[$__range]))",
+          "expr": "sum by(status)(github_runner_jobs_by_runner_status_total{instance=~\"$runner\"})",
           "legendFormat": "{{status}}",
           "refId": "A"
         }
