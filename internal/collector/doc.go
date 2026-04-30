@@ -16,7 +16,12 @@
 // # Exported Metrics
 //
 //   - github_runner_info (gauge, constant labels)
-//     Static identity information: runner name, group, OS, binary version, revision.
+//     Static identity information about the runner: name, group, OS, arch,
+//     ephemeral flag, and runner agent version.
+//
+//   - github_runner_exporter_info (gauge, constant labels)
+//     Static build information about the exporter binary: version, revision,
+//     OS, build date, and Go runtime version.
 //
 //   - github_runner_online (gauge)
 //     1 when the runner is connected and listening for jobs, 0 otherwise.

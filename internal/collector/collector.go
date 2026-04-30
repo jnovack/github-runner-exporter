@@ -1,6 +1,9 @@
 package collector
 
 import (
+	"runtime"
+	"strconv"
+
 	"github.com/jnovack/github-runner-exporter/internal/runner"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -18,7 +21,8 @@ const namespace = "github_runner"
 type Collector struct {
 	tracker *runner.Tracker
 
-	descInfo             *prometheus.Desc
+	descRunnerInfo       *prometheus.Desc
+	descExporterInfo     *prometheus.Desc
 	descOnline           *prometheus.Desc
 	descBusy             *prometheus.Desc
 	descCurrentJobInfo   *prometheus.Desc
@@ -29,22 +33,35 @@ type Collector struct {
 }
 
 // New creates a Collector and registers it with reg.
-// version and revision are injected at build time via ldflags and exposed
-// as constant labels on github_runner_info.
-func New(tracker *runner.Tracker, cfg *runner.Config, version, revision string, reg prometheus.Registerer) *Collector {
+// version and revision are the exporter binary's build-time ldflags.
+// buildDate is the RFC 3339 build timestamp ldflag.
+func New(tracker *runner.Tracker, cfg *runner.Config, version, revision, buildDate string, reg prometheus.Registerer) *Collector {
 	c := &Collector{
 		tracker: tracker,
 
-		descInfo: prometheus.NewDesc(
+		descRunnerInfo: prometheus.NewDesc(
 			namespace+"_info",
-			"Static runner identity information.",
+			"Static identity information about the GitHub Actions runner.",
 			nil,
 			prometheus.Labels{
 				"runner_name": cfg.AgentName,
 				"group":       cfg.PoolName,
 				"os":          runner.OS(),
-				"version":     version,
-				"revision":    revision,
+				"arch":        runner.Arch(),
+				"ephemeral":   strconv.FormatBool(cfg.IsEphemeral),
+				"version":     orUnknown(cfg.AgentVersion),
+			},
+		),
+		descExporterInfo: prometheus.NewDesc(
+			namespace+"_exporter_info",
+			"Static build information about the github-runner-exporter binary.",
+			nil,
+			prometheus.Labels{
+				"version":    version,
+				"revision":   revision,
+				"os":         runner.OS(),
+				"build_date": buildDate,
+				"goversion":  runtime.Version(),
 			},
 		),
 		descOnline: prometheus.NewDesc(
@@ -95,7 +112,8 @@ func New(tracker *runner.Tracker, cfg *runner.Config, version, revision string, 
 
 // Describe sends all metric descriptors to ch.
 func (c *Collector) Describe(ch chan<- *prometheus.Desc) {
-	ch <- c.descInfo
+	ch <- c.descRunnerInfo
+	ch <- c.descExporterInfo
 	ch <- c.descOnline
 	ch <- c.descBusy
 	ch <- c.descCurrentJobInfo
@@ -109,7 +127,8 @@ func (c *Collector) Describe(ch chan<- *prometheus.Desc) {
 func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 	snap := c.tracker.Snapshot()
 
-	ch <- prometheus.MustNewConstMetric(c.descInfo, prometheus.GaugeValue, 1)
+	ch <- prometheus.MustNewConstMetric(c.descRunnerInfo, prometheus.GaugeValue, 1)
+	ch <- prometheus.MustNewConstMetric(c.descExporterInfo, prometheus.GaugeValue, 1)
 
 	online, busy := stateToGauges(snap.State)
 	ch <- prometheus.MustNewConstMetric(c.descOnline, prometheus.GaugeValue, online)

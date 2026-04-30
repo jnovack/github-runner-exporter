@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 )
 
 // Config holds the parsed contents of the runner's .runner configuration file.
@@ -19,6 +20,11 @@ type Config struct {
 	GitHubURL   string `json:"GitHubUrl"`
 	WorkFolder  string `json:"WorkFolder"`
 	IsEphemeral bool   `json:"IsEphemeral"`
+
+	// AgentVersion is the runner agent version (e.g. "2.334.0"), detected at
+	// load time from the "bin" symlink in the runner directory. Empty string if
+	// not detectable.
+	AgentVersion string `json:"-"`
 }
 
 // LoadConfig reads and parses the .runner file in the given runner directory.
@@ -44,6 +50,12 @@ func LoadConfig(runnerDir string) (*Config, error) {
 		c.WorkFolder = "_work"
 	}
 
+	if link, err := os.Readlink(filepath.Join(runnerDir, "bin")); err == nil {
+		if v, ok := strings.CutPrefix(link, "bin."); ok {
+			c.AgentVersion = v
+		}
+	}
+
 	return &c, nil
 }
 
@@ -55,6 +67,11 @@ func (c *Config) DiagDir(runnerDir string) string {
 // OS returns the operating system name for use as a metric label.
 func OS() string {
 	return runtime.GOOS
+}
+
+// Arch returns the CPU architecture name for use as a metric label.
+func Arch() string {
+	return runtime.GOARCH
 }
 
 // DefaultRunnerDir returns the platform-appropriate default runner installation directory.

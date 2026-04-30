@@ -122,3 +122,44 @@ func TestOS_NotEmpty(t *testing.T) {
 		t.Error("OS() returned empty string")
 	}
 }
+
+func TestArch_NotEmpty(t *testing.T) {
+	if Arch() == "" {
+		t.Error("Arch() returned empty string")
+	}
+}
+
+func TestLoadConfig_AgentVersionFromSymlink(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, ".runner"), []byte(`{"AgentId":1,"AgentName":"sym-runner","PoolId":1,"PoolName":"Default","WorkFolder":"_work"}`), 0600); err != nil {
+		t.Fatalf("write .runner: %v", err)
+	}
+	if err := os.Mkdir(filepath.Join(dir, "bin.2.334.0"), 0755); err != nil {
+		t.Fatalf("mkdir bin dir: %v", err)
+	}
+	// Use a relative symlink — this is how the real runner sets it up.
+	if err := os.Symlink("bin.2.334.0", filepath.Join(dir, "bin")); err != nil {
+		t.Skip("symlinks not supported on this platform:", err)
+	}
+	cfg, err := LoadConfig(dir)
+	if err != nil {
+		t.Fatalf("LoadConfig: %v", err)
+	}
+	if cfg.AgentVersion != "2.334.0" {
+		t.Errorf("AgentVersion = %q, want %q", cfg.AgentVersion, "2.334.0")
+	}
+}
+
+func TestLoadConfig_AgentVersionMissing(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, ".runner"), []byte(`{"AgentId":1,"AgentName":"no-bin-runner","PoolId":1,"PoolName":"Default","WorkFolder":"_work"}`), 0600); err != nil {
+		t.Fatalf("write .runner: %v", err)
+	}
+	cfg, err := LoadConfig(dir)
+	if err != nil {
+		t.Fatalf("LoadConfig: %v", err)
+	}
+	if cfg.AgentVersion != "" {
+		t.Errorf("AgentVersion = %q, want empty string when bin symlink is absent", cfg.AgentVersion)
+	}
+}

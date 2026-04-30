@@ -6,7 +6,8 @@ All metrics are prefixed with `github_runner_`.
 
 | Metric | Type | Labels | Description |
 | --- | --- | --- | --- |
-| `github_runner_info` | Gauge | `runner_name`, `group`, `os`, `version`, `revision` | Always `1`. Static identity and build information for this runner instance. |
+| `github_runner_info` | Gauge | `runner_name`, `group`, `os`, `arch`, `ephemeral`, `version` | Always `1`. Static identity information about the runner agent. |
+| `github_runner_exporter_info` | Gauge | `version`, `revision`, `os`, `build_date`, `goversion` | Always `1`. Static build information about the exporter binary. |
 | `github_runner_online` | Gauge | — | `1` when the runner process is alive and listening for jobs, `0` when offline. |
 | `github_runner_busy` | Gauge | — | `1` when a job is currently executing, `0` when idle or offline. |
 
@@ -45,18 +46,23 @@ Reflects the most recently completed job only. Useful for alerting on failures a
 
 ## Label Values
 
-| Label | Source | Notes |
-| --- | --- | --- |
-| `runner_name` | `.runner` config `AgentName` field | Matches the name registered in GitHub. |
-| `group` | `.runner` config `PoolName` field | Runner group (pool). Empty string if not set. |
-| `version` | Build-time ldflag (`-X main.version`) | Semver tag e.g. `v1.2.3`. Falls back to `runtime/debug` VCS info, then `dev`. |
-| `revision` | Build-time ldflag (`-X main.revision`) | Full git SHA. Falls back to `runtime/debug` VCS info, then `local`. |
-| `os` | `runtime.GOOS` | Operating system of the runner VM. |
-| `repo` | Worker log `repository` context value | Format: `owner/repo`. Falls back to `unknown` if not parseable. |
-| `workflow` | Worker log `workflow` context value | Display name of the workflow. Falls back to `unknown`. |
-| `job_name` | Worker log `jobDisplayName` field | Job name from the workflow YAML (includes matrix dimension). Falls back to `unknown`. |
-| `actor` | Worker log `triggeredBy` context value | GitHub username that triggered the workflow. Falls back to `unknown`. |
-| `status` | Runner log completion result | Lowercase: `succeeded`, `failed`, `canceled`. Both runner spellings ("Canceled"/"Cancelled") are normalized to `canceled`. |
+| Label | Metric(s) | Source | Notes |
+| --- | --- | --- | --- |
+| `runner_name` | runner info, job metrics | `.runner` config `AgentName` | Matches the name registered in GitHub. |
+| `group` | runner info | `.runner` config `PoolName` | Runner group (pool). |
+| `os` | runner info, exporter info | `runtime.GOOS` | Operating system of the host. |
+| `arch` | runner info | `runtime.GOARCH` | CPU architecture, e.g. `amd64`, `arm64`. |
+| `ephemeral` | runner info | `.runner` config `IsEphemeral` | `"true"` for ephemeral (just-in-time) runners, `"false"` otherwise. |
+| `version` | runner info | `bin` symlink in runner dir | Runner agent version, e.g. `2.334.0`. Falls back to `"unknown"` if undetectable. |
+| `version` | exporter info | Build-time ldflag (`-X main.version`) | Exporter semver tag e.g. `v1.2.3`. Falls back to `runtime/debug` VCS info, then `dev`. |
+| `revision` | exporter info | Build-time ldflag (`-X main.revision`) | Full git SHA. Falls back to `runtime/debug` VCS info, then `local`. |
+| `build_date` | exporter info | Build-time ldflag (`-X main.buildRFC3339`) | RFC 3339 build timestamp. |
+| `goversion` | exporter info | `runtime.Version()` | Go runtime version, e.g. `go1.22.3`. |
+| `repo` | job metrics | Worker log `repository` context value | Format: `owner/repo`. Falls back to `unknown` if not parseable. |
+| `workflow` | job metrics | Worker log `workflow` context value | Display name of the workflow. Falls back to `unknown`. |
+| `job_name` | job metrics | Worker log `jobDisplayName` field | Job name from the workflow YAML (includes matrix dimension). Falls back to `unknown`. |
+| `actor` | job metrics | Worker log `triggeredBy` context value | GitHub username that triggered the workflow. Falls back to `unknown`. |
+| `status` | job metrics | Runner log completion result | Lowercase: `succeeded`, `failed`, `canceled`. Both runner spellings ("Canceled"/"Cancelled") are normalized to `canceled`. |
 
 ## Example PromQL Queries
 

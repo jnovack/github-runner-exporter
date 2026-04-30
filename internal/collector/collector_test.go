@@ -15,12 +15,13 @@ func setup(t *testing.T) (*runner.Tracker, *runner.Config, *Collector, prometheu
 	t.Helper()
 	reg := prometheus.NewRegistry()
 	cfg := &runner.Config{
-		AgentName:  "runner-prod-01",
-		PoolName:   "Default",
-		WorkFolder: "_work",
+		AgentName:    "runner-prod-01",
+		PoolName:     "Default",
+		WorkFolder:   "_work",
+		AgentVersion: "2.334.0",
 	}
 	tracker := runner.NewTracker(cfg.AgentName, reg)
-	col := New(tracker, cfg, "v1.2.3", "abc1234", reg)
+	col := New(tracker, cfg, "v1.2.3", "abc1234", "2024-01-01T00:00:00Z", reg)
 	return tracker, cfg, col, reg
 }
 

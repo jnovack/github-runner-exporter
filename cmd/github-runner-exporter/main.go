@@ -115,7 +115,7 @@ func main() {
 
 	reg := prometheus.NewRegistry()
 	tracker := runner.NewTracker(cfg.AgentName, reg)
-	collector.New(tracker, cfg, version, revision, reg)
+	collector.New(tracker, cfg, version, revision, buildRFC3339, reg)
 
 	diagDir := cfg.DiagDir(*runnerDir)
 	watcher := runner.NewWatcher(diagDir, tracker)
