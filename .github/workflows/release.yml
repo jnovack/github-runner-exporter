@@ -87,8 +87,8 @@ jobs:
           go build \
             -ldflags "-s -w \
               -X main.version=${{ github.ref_name }} \
-              -X main.commit=${{ github.sha }} \
-              -X main.date=$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
+              -X main.revision=${{ github.sha }} \
+              -X main.buildRFC3339=$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
             -o ${{ matrix.artifact }} \
             ./cmd/github-runner-exporter/main.go
 
