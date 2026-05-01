@@ -236,11 +236,19 @@
         },
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "expr": "max by(instance, runner_name, version) (github_runner_info{instance=~\"$runner\"})",
+          "expr": "max by(instance, runner_name, version, arch, ephemeral) (github_runner_info{instance=~\"$runner\"})",
           "instant": true,
           "format": "table",
           "legendFormat": "__auto",
           "refId": "D"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "expr": "max by(instance, exporter_version) (label_replace(github_runner_exporter_info{instance=~\"$runner\"}, \"exporter_version\", \"$1\", \"version\", \"(.*)\"))",
+          "instant": true,
+          "format": "table",
+          "legendFormat": "__auto",
+          "refId": "E"
         }
       ],
       "title": "Runner Status Table",
@@ -256,11 +264,15 @@
               "job": true,
               "group": true,
               "os": true,
-              "revision": true,
-              "Value #D": true
+              "Value #D": true,
+              "Value #E": true
             },
             "renameByName": {
               "runner_name": "Runner",
+              "version": "Agent Version",
+              "arch": "Arch",
+              "ephemeral": "Ephemeral",
+              "exporter_version": "Exporter Version",
               "Value #A": "online",
               "Value #B": "busy",
               "Value #C": "last run"
