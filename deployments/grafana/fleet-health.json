@@ -264,6 +264,7 @@
               "job": true,
               "group": true,
               "os": true,
+              "ephemeral": true,
               "Value #D": true,
               "Value #E": true
             },
@@ -271,7 +272,6 @@
               "runner_name": "Runner",
               "version": "Agent Version",
               "arch": "Arch",
-              "ephemeral": "Ephemeral",
               "exporter_version": "Exporter Version",
               "Value #A": "online",
               "Value #B": "busy",
