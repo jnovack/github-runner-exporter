@@ -1,11 +1,14 @@
 package runner
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 )
@@ -51,12 +54,48 @@ func LoadConfig(runnerDir string) (*Config, error) {
 	}
 
 	if link, err := os.Readlink(filepath.Join(runnerDir, "bin")); err == nil {
-		if v, ok := strings.CutPrefix(link, "bin."); ok {
+		if v, ok := strings.CutPrefix(filepath.Base(link), "bin."); ok {
 			c.AgentVersion = v
 		}
 	}
 
+	if c.AgentVersion == "" {
+		c.AgentVersion = detectVersionFromDiagLogs(filepath.Join(runnerDir, "_diag"))
+	}
+
 	return &c, nil
+}
+
+// diagBinVersionRe matches "bin.2.334.0" anywhere in a Runner diag log line.
+var diagBinVersionRe = regexp.MustCompile(`\bbin\.(\d+\.\d+\.\d+)\b`)
+
+// detectVersionFromDiagLogs scans the most recently created Runner_*.log in
+// diagDir for the HostContext "Well known directory 'Bin'" startup line and
+// extracts the runner agent version from it. Returns "" if not found.
+func detectVersionFromDiagLogs(diagDir string) string {
+	entries, err := filepath.Glob(filepath.Join(diagDir, "Runner_*.log"))
+	if err != nil || len(entries) == 0 {
+		return ""
+	}
+	// filepath.Glob returns alphabetical order; Runner logs use timestamp-based
+	// names (Runner_YYYYMMDD-HHMMSS-utc_PID.log), so the last entry is newest.
+	f, err := os.Open(entries[len(entries)-1])
+	if err != nil {
+		return ""
+	}
+	defer f.Close()
+
+	// The version line appears in the first few hundred lines of every log.
+	scanner := bufio.NewScanner(io.LimitReader(f, 64*1024))
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.Contains(line, "Bin") {
+			if m := diagBinVersionRe.FindStringSubmatch(line); m != nil {
+				return m[1]
+			}
+		}
+	}
+	return ""
 }
 
 // DiagDir returns the absolute path to the runner's _diag directory.
