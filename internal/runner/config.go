@@ -11,6 +11,7 @@ import (
 	"regexp"
 	"runtime"
 	"strings"
+	"time"
 )
 
 // Config holds the parsed contents of the runner's .runner configuration file.
@@ -25,8 +26,9 @@ type Config struct {
 	IsEphemeral bool   `json:"IsEphemeral"`
 
 	// AgentVersion is the runner agent version (e.g. "2.334.0"), detected at
-	// load time from the "bin" symlink in the runner directory. Empty string if
-	// not detectable.
+	// load time by trying in order: the "bin" symlink target, the most recently
+	// modified bin.VERSION directory, and the Runner diag log. Empty string if
+	// not detectable by any strategy.
 	AgentVersion string `json:"-"`
 }
 
@@ -60,10 +62,77 @@ func LoadConfig(runnerDir string) (*Config, error) {
 	}
 
 	if c.AgentVersion == "" {
+		c.AgentVersion = detectVersionFromDepsJSON(filepath.Join(runnerDir, "bin"))
+	}
+
+	if c.AgentVersion == "" {
+		c.AgentVersion = detectVersionFromBinDirs(runnerDir)
+	}
+
+	if c.AgentVersion == "" {
 		c.AgentVersion = detectVersionFromDiagLogs(filepath.Join(runnerDir, "_diag"))
 	}
 
 	return &c, nil
+}
+
+// binVersionDirRe matches a versioned bin directory name like "bin.2.334.0".
+var binVersionDirRe = regexp.MustCompile(`^bin\.(\d+\.\d+\.\d+)$`)
+
+// detectVersionFromBinDirs finds the most recently modified bin.VERSION
+// directory in runnerDir and returns the version string. This handles
+// installations where the runner update process leaves bin as a plain
+// directory rather than a symlink. Returns "" if none are found.
+func detectVersionFromBinDirs(runnerDir string) string {
+	entries, err := os.ReadDir(runnerDir)
+	if err != nil {
+		return ""
+	}
+
+	var newest string
+	var newestTime time.Time
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		m := binVersionDirRe.FindStringSubmatch(entry.Name())
+		if m == nil {
+			continue
+		}
+		info, err := entry.Info()
+		if err != nil {
+			continue
+		}
+		if info.ModTime().After(newestTime) {
+			newestTime = info.ModTime()
+			newest = m[1]
+		}
+	}
+	return newest
+}
+
+// depsJSONVersionRe matches the Runner.Listener entry in a .deps.json file,
+// e.g. "Runner.Listener/2.334.0".
+var depsJSONVersionRe = regexp.MustCompile(`"Runner\.Listener/(\d+\.\d+\.\d+)"`)
+
+// detectVersionFromDepsJSON reads bin/Runner.Listener.deps.json and extracts
+// the runner agent version from the .NET dependency manifest. This file is
+// present in every runner installation regardless of whether bin is a symlink
+// or a plain directory.
+func detectVersionFromDepsJSON(binDir string) string {
+	f, err := os.Open(filepath.Join(binDir, "Runner.Listener.deps.json"))
+	if err != nil {
+		return ""
+	}
+	defer f.Close()
+
+	scanner := bufio.NewScanner(io.LimitReader(f, 64*1024))
+	for scanner.Scan() {
+		if m := depsJSONVersionRe.FindStringSubmatch(scanner.Text()); m != nil {
+			return m[1]
+		}
+	}
+	return ""
 }
 
 // diagBinVersionRe matches "bin.2.334.0" anywhere in a Runner diag log line.
