@@ -12,9 +12,10 @@ github_runner_info{runner_name="…", group="…", os="…", version="…", revi
 ```
 
 Two of those labels — `version` and `revision` — described the **exporter
-binary** (build-time ldflags). The other three described the **GitHub Actions
-runner agent** (from the `.runner` config file). Mixing the two subjects on a
-single metric created several problems:
+binary** (build-time ldflags). Of the remaining three, `runner_name` and
+`group` described the runner agent identity (from the `.runner` config file);
+`os` described the host OS (from `runtime.GOOS`). Mixing unrelated subjects on
+a single metric created several problems:
 
 - **Semantic confusion.** A user querying `version` expected the runner agent
   version (e.g. `2.334.0`), not the exporter's semver tag.
@@ -99,8 +100,10 @@ approaches were evaluated:
    immediately at startup, before the collector is constructed. Falls back to
    `"unknown"` if the symlink is absent or unreadable.
 
-Option 3 was chosen for its simplicity and availability at startup time,
-allowing `version` to be a constant label on `github_runner_info`.
+Option 3 is the primary strategy. If the symlink is absent, `LoadConfig`
+falls back to Option 1: scanning the most recently created `Runner_*.log` in
+`_diag/` for the HostContext `"Well known directory 'Bin'"` startup line.
+Both strategies make `version` available as a constant label at startup.
 
 ## Consequences
 
@@ -112,7 +115,8 @@ allowing `version` to be a constant label on `github_runner_info`.
 - **New labels on `github_runner_info`:** `arch` and `ephemeral` are added.
   Existing queries that match all labels by exact equality will need updating;
   queries that select a subset of labels are unaffected.
-- **Runner agent version accuracy:** the symlink approach only works on
-  installations where the runner creates the `bin` symlink (standard Linux and
-  macOS installs). Windows runners and non-standard layouts will see
-  `version="unknown"` until the approach is extended.
+- **Runner agent version accuracy:** the symlink approach works where the
+  runner creates a `bin` symlink (standard Linux and macOS installs). Where the
+  symlink is absent, `LoadConfig` falls back to scanning `_diag/Runner_*.log`
+  for the HostContext startup line. Windows runners and non-standard layouts
+  without either will still see `version="unknown"`.
