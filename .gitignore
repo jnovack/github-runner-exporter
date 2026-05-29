@@ -1,5 +1,6 @@
 bin/
 reference/
 debug/
+.local/
 .env
 scripts/local.mk

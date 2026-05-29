@@ -540,13 +540,21 @@
       },
       "fieldConfig": {
         "defaults": {
+          "unit": "short",
           "custom": {
             "drawStyle": "line",
             "lineInterpolation": "stepAfter",
             "fillOpacity": 10,
             "spanNulls": false,
             "lineWidth": 2,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
             "showPoints": "never"
+          },
+          "color": {
+            "mode": "palette-classic"
           }
         },
         "overrides": [
@@ -590,7 +598,7 @@
                 "id": "color",
                 "value": {
                   "mode": "fixed",
-                  "fixedColor": "orange"
+                  "fixedColor": "yellow"
                 }
               }
             ]
@@ -619,7 +627,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "sum by(status)(github_runner_jobs_by_runner_status_total{instance=~\"$runner\"})",
+          "expr": "sum by(status)(increase(github_runner_jobs_total{instance=~\"$runner\", repo=~\"$repo\", workflow=~\"$workflow\", actor=~\"$actor\"}[$__range]))",
           "legendFormat": "{{status}}",
           "refId": "A"
         }
@@ -725,7 +733,7 @@
         }
       },
       "gridPos": {
-        "h": 8,
+        "h": 9,
         "w": 8,
         "x": 0,
         "y": 15
@@ -786,7 +794,7 @@
         }
       },
       "gridPos": {
-        "h": 8,
+        "h": 9,
         "w": 8,
         "x": 8,
         "y": 15
@@ -848,7 +856,7 @@
         }
       },
       "gridPos": {
-        "h": 8,
+        "h": 9,
         "w": 8,
         "x": 16,
         "y": 15
@@ -921,7 +929,7 @@
         }
       },
       "gridPos": {
-        "h": 8,
+        "h": 9,
         "w": 12,
         "x": 0,
         "y": 24
@@ -983,7 +991,7 @@
         }
       },
       "gridPos": {
-        "h": 8,
+        "h": 9,
         "w": 12,
         "x": 12,
         "y": 24
@@ -1064,7 +1072,27 @@
           "color": {
             "mode": "palette-classic"
           }
-        }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byValue",
+              "options": {
+                "reducer": "allIsZero"
+              }
+            },
+            "properties": [
+              {
+                "id": "custom.hideFrom",
+                "value": {
+                  "legend": true,
+                  "tooltip": true,
+                  "viz": true
+                }
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
         "h": 8,
@@ -1076,7 +1104,7 @@
       "options": {
         "legend": {
           "displayMode": "list",
-          "placement": "bottom"
+          "placement": "right"
         },
         "tooltip": {
           "mode": "multi"
@@ -1119,7 +1147,27 @@
           "color": {
             "mode": "palette-classic"
           }
-        }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byValue",
+              "options": {
+                "reducer": "allIsZero"
+              }
+            },
+            "properties": [
+              {
+                "id": "custom.hideFrom",
+                "value": {
+                  "legend": true,
+                  "tooltip": true,
+                  "viz": true
+                }
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
         "h": 8,
@@ -1131,7 +1179,7 @@
       "options": {
         "legend": {
           "displayMode": "list",
-          "placement": "bottom"
+          "placement": "right"
         },
         "tooltip": {
           "mode": "multi"
